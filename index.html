@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>PiresFlix</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <!-- NAVBAR -->
+
+    <header class="navbar">
+
+        <div class="logo">
+            PIRES<span>FLIX</span>
+        </div>
+
+        <nav>
+            <a href="#inicio">Início</a>
+            <a href="#filmes">Filmes</a>
+            <a href="#series">Séries</a>
+        </nav>
+
+        <div class="search">
+
+            <input
+                type="text"
+                id="pesquisa"
+                placeholder="Pesquisar filmes e séries..."
+                autocomplete="off"
+            >
+
+        </div>
+
+    </header>
+
+
+    <!-- HERO -->
+
+    <section class="hero" id="inicio">
+
+        <div class="hero-content">
+
+            <h1>PIRESFLIX</h1>
+
+            <p>
+                Encontre seus filmes e séries favoritos em um só lugar.
+            </p>
+
+            <button onclick="irParaCatalogo()">
+                VER CATÁLOGO
+            </button>
+
+        </div>
+
+    </section>
+
+
+    <!-- FILMES -->
+
+    <main id="filmes">
+
+        <div class="titulo-secao">
+            <h2 id="tituloFilmes">Filmes populares</h2>
+        </div>
+
+        <div id="filmesContainer" class="catalogo">
+
+            <div class="loading">
+                Carregando filmes...
+            </div>
+
+        </div>
+
+    </main>
+
+
+    <!-- SÉRIES -->
+
+    <main id="series">
+
+        <div class="titulo-secao">
+            <h2 id="tituloSeries">Séries populares</h2>
+        </div>
+
+        <div id="seriesContainer" class="catalogo">
+
+            <div class="loading">
+                Carregando séries...
+            </div>
+
+        </div>
+
+    </main>
+
+
+    <!-- RESULTADOS DA PESQUISA -->
+
+    <main id="resultadosPesquisa" class="pesquisa-area">
+
+        <div class="titulo-secao">
+
+            <h2 id="tituloPesquisa">
+                Resultados da pesquisa
+            </h2>
+
+        </div>
+
+        <div id="pesquisaContainer" class="catalogo"></div>
+
+    </main>
+
+
+    <!-- PLAYER -->
+
+    <div id="playerContainer" class="player-container">
+
+        <div class="player-top">
+
+            <button id="fecharPlayer">
+                ✕ Fechar
+            </button>
+
+        </div>
+
+        <iframe
+            id="player"
+            src=""
+            frameborder="0"
+            allowfullscreen>
+        </iframe>
+
+    </div>
+
+
+    <script src="script.js"></script>
+
+</body>
+
+</html>

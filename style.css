@@ -1,0 +1,499 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    background: #080808;
+    color: white;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+
+/* =========================
+   NAVBAR
+========================= */
+
+.navbar {
+    width: 100%;
+    height: 70px;
+
+    background: #0b0b0b;
+
+    display: flex;
+    align-items: center;
+
+    padding: 0 5%;
+
+    gap: 45px;
+
+    position: sticky;
+    top: 0;
+
+    z-index: 1000;
+
+    border-bottom: 1px solid #191919;
+}
+
+
+.logo {
+    font-size: 27px;
+
+    font-weight: 900;
+
+    letter-spacing: 1px;
+
+    color: white;
+
+    white-space: nowrap;
+}
+
+
+.logo span {
+    color: #e50914;
+}
+
+
+nav {
+    display: flex;
+
+    gap: 25px;
+}
+
+
+nav a {
+    color: #ddd;
+
+    text-decoration: none;
+
+    font-size: 15px;
+
+    transition: 0.2s;
+}
+
+
+nav a:hover {
+    color: white;
+}
+
+
+/* =========================
+   PESQUISA
+========================= */
+
+.search {
+    margin-left: auto;
+
+    position: relative;
+}
+
+
+.search input {
+    width: 280px;
+
+    padding: 11px 15px;
+
+    border-radius: 5px;
+
+    border: 1px solid #333;
+
+    background: #151515;
+
+    color: white;
+
+    outline: none;
+
+    font-size: 14px;
+}
+
+
+.search input:focus {
+    border-color: #e50914;
+}
+
+
+.search input::placeholder {
+    color: #888;
+}
+
+
+/* =========================
+   HERO
+========================= */
+
+.hero {
+    height: 430px;
+
+    display: flex;
+
+    align-items: center;
+
+    padding-left: 7%;
+
+    background:
+        linear-gradient(
+            90deg,
+            #080808 0%,
+            rgba(8, 8, 8, 0.85) 35%,
+            rgba(8, 8, 8, 0.15) 100%
+        ),
+        linear-gradient(
+            0deg,
+            #080808 0%,
+            transparent 30%
+        ),
+        url("https://image.tmdb.org/t/p/original/8cdWjvZQUExUUTzyp4t6EDMubfO.jpg");
+
+    background-size: cover;
+
+    background-position: center;
+}
+
+
+.hero-content {
+    max-width: 550px;
+}
+
+
+.hero h1 {
+    font-size: 60px;
+
+    font-weight: 900;
+
+    margin-bottom: 15px;
+}
+
+
+.hero p {
+    color: #ddd;
+
+    font-size: 18px;
+
+    margin-bottom: 25px;
+}
+
+
+.hero button {
+    background: #e50914;
+
+    border: none;
+
+    color: white;
+
+    padding: 13px 25px;
+
+    border-radius: 5px;
+
+    font-weight: bold;
+
+    cursor: pointer;
+
+    transition: 0.2s;
+}
+
+
+.hero button:hover {
+    background: #b20710;
+
+    transform: scale(1.03);
+}
+
+
+/* =========================
+   SEÇÕES
+========================= */
+
+main {
+    padding: 35px 5%;
+}
+
+
+.titulo-secao {
+    margin-bottom: 25px;
+}
+
+
+.titulo-secao h2 {
+    font-size: 25px;
+}
+
+
+/* =========================
+   GRID
+========================= */
+
+.catalogo {
+    display: grid;
+
+    grid-template-columns:
+        repeat(
+            auto-fill,
+            minmax(180px, 1fr)
+        );
+
+    gap: 22px;
+}
+
+
+/* =========================
+   CARD
+========================= */
+
+.filme {
+    background: #111;
+
+    border-radius: 7px;
+
+    overflow: hidden;
+
+    cursor: pointer;
+
+    transition:
+        transform 0.25s,
+        box-shadow 0.25s;
+
+    position: relative;
+}
+
+
+.filme:hover {
+    transform: scale(1.05);
+
+    box-shadow:
+        0 10px 30px rgba(0, 0, 0, 0.7);
+
+    z-index: 5;
+}
+
+
+.poster {
+    width: 100%;
+
+    aspect-ratio: 2 / 3;
+
+    object-fit: cover;
+
+    display: block;
+}
+
+
+.info {
+    padding: 12px;
+}
+
+
+.nome-filme {
+    font-size: 15px;
+
+    font-weight: bold;
+
+    white-space: nowrap;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+
+    margin-bottom: 8px;
+}
+
+
+.detalhes {
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    color: #999;
+
+    font-size: 13px;
+}
+
+
+.nota {
+    color: #f5c518;
+}
+
+
+.tipo {
+    color: #e50914;
+
+    font-weight: bold;
+
+    font-size: 11px;
+
+    text-transform: uppercase;
+}
+
+
+/* =========================
+   LOADING
+========================= */
+
+.loading {
+    color: #aaa;
+
+    font-size: 16px;
+
+    padding: 30px 0;
+}
+
+
+/* =========================
+   PESQUISA
+========================= */
+
+.pesquisa-area {
+    display: none;
+}
+
+
+.pesquisa-area.ativo {
+    display: block;
+}
+
+
+.pesquisa-area .titulo-secao {
+    margin-bottom: 25px;
+}
+
+
+/* =========================
+   PLAYER
+========================= */
+
+.player-container {
+    display: none;
+
+    position: fixed;
+
+    inset: 0;
+
+    background: #000;
+
+    z-index: 9999;
+
+    padding: 20px;
+}
+
+
+.player-top {
+    height: 45px;
+
+    display: flex;
+
+    justify-content: flex-end;
+
+    align-items: center;
+}
+
+
+#fecharPlayer {
+    background: #e50914;
+
+    color: white;
+
+    border: none;
+
+    padding: 9px 18px;
+
+    border-radius: 5px;
+
+    cursor: pointer;
+
+    font-size: 14px;
+}
+
+
+#player {
+    display: block;
+
+    width: 100%;
+
+    height: calc(100vh - 70px);
+
+    border: none;
+}
+
+
+/* =========================
+   MOBILE
+========================= */
+
+@media (max-width: 700px) {
+
+    .navbar {
+        height: auto;
+
+        padding: 15px;
+
+        flex-wrap: wrap;
+
+        gap: 15px;
+    }
+
+
+    nav {
+        width: 100%;
+
+        display: flex;
+
+        gap: 18px;
+    }
+
+
+    .search {
+        width: 100%;
+
+        margin-left: 0;
+    }
+
+
+    .search input {
+        width: 100%;
+    }
+
+
+    .hero {
+        height: 350px;
+
+        padding: 30px;
+    }
+
+
+    .hero h1 {
+        font-size: 42px;
+    }
+
+
+    .hero p {
+        font-size: 16px;
+    }
+
+
+    .catalogo {
+        grid-template-columns:
+            repeat(
+                2,
+                1fr
+            );
+
+        gap: 12px;
+    }
+
+
+    main {
+        padding: 25px 15px;
+    }
+
+
+    .titulo-secao h2 {
+        font-size: 21px;
+    }
+
+}
