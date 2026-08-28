@@ -1,0 +1,796 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, Helvetica, sans-serif;
+
+    min-height: 100vh;
+
+    background: #050505;
+
+    color: #ffffff;
+
+    overflow-x: hidden;
+
+    position: relative;
+}
+
+
+/* =========================================
+   FUNDO
+========================================= */
+
+.background {
+    position: fixed;
+
+    inset: 0;
+
+    width: 100%;
+    height: 100%;
+
+    overflow: hidden;
+
+    z-index: -1;
+
+    background:
+        radial-gradient(
+            circle at top,
+            #252525 0%,
+            #101010 45%,
+            #050505 100%
+        );
+}
+
+
+/* =========================================
+   GLOWS
+========================================= */
+
+.glow {
+    position: absolute;
+
+    border-radius: 50%;
+
+    filter: blur(100px);
+
+    opacity: 0.25;
+
+    pointer-events: none;
+}
+
+.glow-1 {
+    width: 450px;
+    height: 450px;
+
+    background: #e50914;
+
+    top: -200px;
+    left: -150px;
+
+    animation: floatGlow1 10s ease-in-out infinite;
+}
+
+.glow-2 {
+    width: 400px;
+    height: 400px;
+
+    background: #7a0000;
+
+    right: -150px;
+    top: 20%;
+
+    animation: floatGlow2 12s ease-in-out infinite;
+}
+
+.glow-3 {
+    width: 350px;
+    height: 350px;
+
+    background: #e50914;
+
+    bottom: -200px;
+    left: 40%;
+
+    opacity: 0.12;
+
+    animation: floatGlow3 14s ease-in-out infinite;
+}
+
+
+/* =========================================
+   PARTICULAS
+========================================= */
+
+.particles {
+    position: absolute;
+
+    inset: 0;
+
+    opacity: 0.3;
+
+    background-image:
+        radial-gradient(
+            circle,
+            rgba(255, 255, 255, 0.25) 1px,
+            transparent 1px
+        );
+
+    background-size: 45px 45px;
+
+    animation: particlesMove 20s linear infinite;
+}
+
+
+/* =========================================
+   LOGO
+========================================= */
+
+.logo {
+    position: fixed;
+
+    top: 30px;
+    left: 40px;
+
+    font-size: 30px;
+
+    font-weight: 800;
+
+    letter-spacing: -1px;
+
+    z-index: 10;
+}
+
+.logo span {
+    color: #e50914;
+}
+
+.logo strong {
+    color: #ffffff;
+}
+
+
+/* =========================================
+   CONTAINER
+========================================= */
+
+.register-container {
+
+    min-height: 100vh;
+
+    width: 100%;
+
+    display: flex;
+
+    justify-content: center;
+
+    align-items: center;
+
+    padding: 90px 20px 80px;
+}
+
+
+/* =========================================
+   CARD
+========================================= */
+
+.register-card {
+
+    width: 100%;
+
+    max-width: 430px;
+
+    padding: 35px 40px;
+
+    background:
+        rgba(15, 15, 15, 0.88);
+
+    border:
+        1px solid rgba(255, 255, 255, 0.08);
+
+    border-radius: 18px;
+
+    box-shadow:
+        0 25px 80px rgba(0, 0, 0, 0.65),
+
+        inset 0 1px 0
+        rgba(255, 255, 255, 0.04);
+
+    backdrop-filter: blur(20px);
+
+    animation: cardEnter 0.6s ease;
+}
+
+
+/* =========================================
+   HEADER
+========================================= */
+
+.register-header {
+    text-align: center;
+
+    margin-bottom: 25px;
+}
+
+.register-header .icon {
+
+    width: 50px;
+    height: 50px;
+
+    margin: 0 auto 15px;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 14px;
+
+    background:
+        rgba(229, 9, 20, 0.12);
+
+    border:
+        1px solid rgba(229, 9, 20, 0.25);
+
+    color: #e50914;
+
+    font-size: 28px;
+
+    font-weight: 300;
+}
+
+.register-header h1 {
+
+    font-size: 26px;
+
+    margin-bottom: 8px;
+}
+
+.register-header p {
+
+    color: #8e8e8e;
+
+    font-size: 14px;
+
+    line-height: 1.5;
+}
+
+
+/* =========================================
+   INPUTS
+========================================= */
+
+.input-group {
+
+    margin-bottom: 16px;
+}
+
+.input-group label {
+
+    display: block;
+
+    margin-bottom: 7px;
+
+    color: #d5d5d5;
+
+    font-size: 13px;
+
+    font-weight: 600;
+}
+
+.input-wrapper {
+
+    position: relative;
+
+    width: 100%;
+}
+
+.input-icon {
+
+    position: absolute;
+
+    left: 15px;
+
+    top: 50%;
+
+    transform: translateY(-50%);
+
+    color: #666;
+
+    font-size: 13px;
+
+    z-index: 2;
+}
+
+.input-wrapper input {
+
+    width: 100%;
+
+    height: 48px;
+
+    padding:
+        0 15px 0 42px;
+
+    background: rgba(25, 25, 25, 0.9);
+
+    border:
+        1px solid #303030;
+
+    border-radius: 9px;
+
+    outline: none;
+
+    color: #ffffff;
+
+    font-size: 14px;
+
+    transition: 0.2s;
+}
+
+.input-wrapper input::placeholder {
+
+    color: #5f5f5f;
+}
+
+.input-wrapper input:focus {
+
+    border-color: #e50914;
+
+    box-shadow:
+        0 0 0 3px
+        rgba(229, 9, 20, 0.10);
+}
+
+
+/* =========================================
+   MOSTRAR SENHA
+========================================= */
+
+.password-toggle {
+
+    position: absolute;
+
+    right: 10px;
+
+    top: 50%;
+
+    transform: translateY(-50%);
+
+    width: auto;
+
+    height: auto;
+
+    margin: 0;
+
+    padding: 5px 6px;
+
+    background: transparent;
+
+    border: none;
+
+    color: #888;
+
+    font-size: 12px;
+
+    font-weight: 500;
+
+    cursor: pointer;
+
+    box-shadow: none;
+}
+
+.password-toggle:hover {
+
+    color: #ffffff;
+
+    background: transparent;
+
+    transform: translateY(-50%);
+}
+
+
+/* =========================================
+   BOTÃO
+========================================= */
+
+.register-button {
+
+    position: relative;
+
+    width: 100%;
+
+    height: 48px;
+
+    margin-top: 5px;
+
+    border: none;
+
+    border-radius: 9px;
+
+    background: #e50914;
+
+    color: #ffffff;
+
+    font-size: 15px;
+
+    font-weight: 700;
+
+    cursor: pointer;
+
+    transition: 0.2s;
+
+    display: flex;
+
+    justify-content: center;
+
+    align-items: center;
+}
+
+.register-button:hover {
+
+    background: #f40612;
+
+    transform: translateY(-1px);
+
+    box-shadow:
+        0 10px 30px
+        rgba(229, 9, 20, 0.25);
+}
+
+.register-button:active {
+
+    transform: translateY(0);
+}
+
+.register-button:disabled {
+
+    cursor: wait;
+
+    opacity: 0.7;
+}
+
+
+/* =========================================
+   LOADER
+========================================= */
+
+.loader {
+
+    display: none;
+
+    width: 17px;
+
+    height: 17px;
+
+    border:
+        2px solid rgba(255,255,255,0.3);
+
+    border-top-color: white;
+
+    border-radius: 50%;
+
+    animation: spin 0.7s linear infinite;
+}
+
+.register-button.loading .button-text {
+
+    display: none;
+}
+
+.register-button.loading .loader {
+
+    display: block;
+}
+
+
+/* =========================================
+   DIVISOR
+========================================= */
+
+.divider {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 15px;
+
+    margin: 22px 0;
+
+    color: #555;
+
+    font-size: 12px;
+}
+
+.divider::before,
+.divider::after {
+
+    content: "";
+
+    flex: 1;
+
+    height: 1px;
+
+    background: #292929;
+}
+
+
+/* =========================================
+   GOOGLE
+========================================= */
+
+.social-register {
+
+    width: 100%;
+
+    height: 46px;
+
+    border:
+        1px solid #303030;
+
+    border-radius: 9px;
+
+    background:
+        rgba(255,255,255,0.03);
+
+    color: #ddd;
+
+    font-size: 14px;
+
+    font-weight: 600;
+
+    cursor: pointer;
+
+    display: flex;
+
+    justify-content: center;
+
+    align-items: center;
+
+    gap: 10px;
+
+    transition: 0.2s;
+}
+
+.social-register span {
+
+    font-weight: 800;
+
+    color: #ffffff;
+
+    font-size: 17px;
+}
+
+.social-register:hover {
+
+    background:
+        rgba(255,255,255,0.06);
+
+    border-color: #444;
+}
+
+
+/* =========================================
+   LOGIN
+========================================= */
+
+.login {
+
+    text-align: center;
+
+    margin-top: 22px;
+
+    color: #777;
+
+    font-size: 13px;
+}
+
+.login a {
+
+    color: #ffffff;
+
+    font-weight: 600;
+
+    text-decoration: none;
+
+    margin-left: 4px;
+
+    transition: 0.2s;
+}
+
+.login a:hover {
+
+    color: #e50914;
+}
+
+
+/* =========================================
+   MENSAGENS
+========================================= */
+
+.message {
+
+    display: none;
+
+    padding: 10px 12px;
+
+    margin-bottom: 14px;
+
+    border-radius: 8px;
+
+    font-size: 13px;
+
+    text-align: center;
+}
+
+.message.error {
+
+    display: block;
+
+    color: #ff7777;
+
+    background:
+        rgba(229, 9, 20, 0.10);
+
+    border:
+        1px solid rgba(229, 9, 20, 0.25);
+}
+
+.message.success {
+
+    display: block;
+
+    color: #62e6a0;
+
+    background:
+        rgba(0, 200, 100, 0.08);
+
+    border:
+        1px solid rgba(0, 200, 100, 0.20);
+}
+
+
+/* =========================================
+   FOOTER
+========================================= */
+
+footer {
+
+    position: fixed;
+
+    bottom: 20px;
+
+    left: 0;
+
+    width: 100%;
+
+    text-align: center;
+
+    color: #555;
+
+    font-size: 11px;
+
+    pointer-events: none;
+}
+
+
+/* =========================================
+   ANIMAÇÕES
+========================================= */
+
+@keyframes cardEnter {
+
+    from {
+
+        opacity: 0;
+
+        transform:
+            translateY(20px)
+            scale(0.97);
+    }
+
+    to {
+
+        opacity: 1;
+
+        transform:
+            translateY(0)
+            scale(1);
+    }
+}
+
+@keyframes spin {
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes floatGlow1 {
+
+    0%, 100% {
+        transform: translate(0, 0);
+    }
+
+    50% {
+        transform: translate(80px, 60px);
+    }
+}
+
+@keyframes floatGlow2 {
+
+    0%, 100% {
+        transform: translate(0, 0);
+    }
+
+    50% {
+        transform: translate(-70px, -40px);
+    }
+}
+
+@keyframes floatGlow3 {
+
+    0%, 100% {
+        transform: translate(0, 0);
+    }
+
+    50% {
+        transform: translate(50px, -50px);
+    }
+}
+
+@keyframes particlesMove {
+
+    from {
+        background-position: 0 0;
+    }
+
+    to {
+        background-position: 45px 45px;
+    }
+}
+
+
+/* =========================================
+   MOBILE
+========================================= */
+
+@media (max-width: 600px) {
+
+    .logo {
+
+        top: 20px;
+
+        left: 20px;
+
+        font-size: 25px;
+    }
+
+    .register-container {
+
+        padding:
+            85px 15px 70px;
+
+        align-items: flex-start;
+    }
+
+    .register-card {
+
+        padding:
+            28px 22px;
+
+        margin-top: 10px;
+    }
+
+    .register-header h1 {
+
+        font-size: 23px;
+    }
+
+    footer {
+
+        display: none;
+    }
+}
