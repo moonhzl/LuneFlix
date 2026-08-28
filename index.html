@@ -1,0 +1,1238 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>PireFlix — Filmes e séries</title>
+
+    <style>
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family:
+                Arial,
+                Helvetica,
+                sans-serif;
+
+            background: #050505;
+
+            color: #ffffff;
+
+            overflow-x: hidden;
+        }
+
+
+        /* =====================================
+           BACKGROUND
+        ===================================== */
+
+        .background {
+            position: fixed;
+
+            inset: 0;
+
+            z-index: -10;
+
+            overflow: hidden;
+
+            background:
+                radial-gradient(
+                    circle at top,
+                    #252525 0%,
+                    #101010 45%,
+                    #050505 100%
+                );
+        }
+
+        .glow {
+            position: absolute;
+
+            border-radius: 50%;
+
+            filter: blur(110px);
+
+            pointer-events: none;
+        }
+
+        .glow-1 {
+            width: 500px;
+            height: 500px;
+
+            background: #e50914;
+
+            opacity: .18;
+
+            top: -250px;
+            left: -150px;
+
+            animation:
+                glowOne 10s ease-in-out infinite;
+        }
+
+        .glow-2 {
+            width: 450px;
+            height: 450px;
+
+            background: #8b0000;
+
+            opacity: .16;
+
+            right: -200px;
+            top: 20%;
+
+            animation:
+                glowTwo 12s ease-in-out infinite;
+        }
+
+        .glow-3 {
+            width: 400px;
+            height: 400px;
+
+            background: #e50914;
+
+            opacity: .08;
+
+            left: 40%;
+            bottom: -250px;
+        }
+
+        .particles {
+            position: absolute;
+
+            inset: 0;
+
+            opacity: .25;
+
+            background-image:
+                radial-gradient(
+                    circle,
+                    rgba(255,255,255,.3) 1px,
+                    transparent 1px
+                );
+
+            background-size: 50px 50px;
+
+            animation:
+                particlesMove 25s linear infinite;
+        }
+
+
+        /* =====================================
+           NAVBAR
+        ===================================== */
+
+        nav {
+            position: fixed;
+
+            top: 0;
+            left: 0;
+
+            width: 100%;
+
+            height: 75px;
+
+            padding: 0 7%;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: space-between;
+
+            background:
+                linear-gradient(
+                    to bottom,
+                    rgba(0,0,0,.75),
+                    transparent
+                );
+
+            z-index: 100;
+        }
+
+        .logo {
+            font-size: 29px;
+
+            font-weight: 900;
+
+            letter-spacing: -1.5px;
+        }
+
+        .logo span {
+            color: #e50914;
+        }
+
+        .logo strong {
+            color: #fff;
+        }
+
+        .nav-buttons {
+            display: flex;
+
+            align-items: center;
+
+            gap: 12px;
+        }
+
+        .nav-login {
+            color: #fff;
+
+            text-decoration: none;
+
+            font-size: 14px;
+
+            font-weight: 600;
+
+            padding: 10px 17px;
+
+            transition: .2s;
+        }
+
+        .nav-login:hover {
+            color: #e50914;
+        }
+
+        .nav-register {
+            color: #fff;
+
+            text-decoration: none;
+
+            background: #e50914;
+
+            padding: 11px 19px;
+
+            border-radius: 7px;
+
+            font-size: 14px;
+
+            font-weight: 700;
+
+            transition: .2s;
+        }
+
+        .nav-register:hover {
+            background: #f40612;
+
+            transform: translateY(-1px);
+        }
+
+
+        /* =====================================
+           HERO
+        ===================================== */
+
+        .hero {
+            min-height: 100vh;
+
+            padding:
+                120px 7% 80px;
+
+            display: flex;
+
+            align-items: center;
+
+            position: relative;
+        }
+
+        .hero-content {
+            width: 650px;
+
+            max-width: 100%;
+
+            animation:
+                heroEnter .8s ease;
+        }
+
+        .badge {
+            display: inline-flex;
+
+            align-items: center;
+
+            gap: 8px;
+
+            padding: 7px 12px;
+
+            margin-bottom: 20px;
+
+            border-radius: 100px;
+
+            background:
+                rgba(229,9,20,.1);
+
+            border:
+                1px solid
+                rgba(229,9,20,.25);
+
+            color: #ff5a61;
+
+            font-size: 12px;
+
+            font-weight: 700;
+
+            text-transform: uppercase;
+
+            letter-spacing: 1px;
+        }
+
+        .badge-dot {
+            width: 6px;
+            height: 6px;
+
+            background: #e50914;
+
+            border-radius: 50%;
+
+            box-shadow:
+                0 0 10px #e50914;
+        }
+
+        .hero h1 {
+            font-size: clamp(
+                45px,
+                6vw,
+                76px
+            );
+
+            line-height: .98;
+
+            letter-spacing: -4px;
+
+            margin-bottom: 25px;
+        }
+
+        .hero h1 span {
+            color: #e50914;
+        }
+
+        .hero-description {
+            max-width: 550px;
+
+            color: #aaa;
+
+            font-size: 17px;
+
+            line-height: 1.7;
+
+            margin-bottom: 32px;
+        }
+
+        .hero-buttons {
+            display: flex;
+
+            flex-wrap: wrap;
+
+            gap: 12px;
+        }
+
+        .primary-button {
+            display: inline-flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            gap: 8px;
+
+            background: #e50914;
+
+            color: #fff;
+
+            text-decoration: none;
+
+            padding: 15px 25px;
+
+            border-radius: 8px;
+
+            font-size: 15px;
+
+            font-weight: 700;
+
+            transition: .2s;
+
+            box-shadow:
+                0 10px 35px
+                rgba(229,9,20,.18);
+        }
+
+        .primary-button:hover {
+            background: #f40612;
+
+            transform: translateY(-2px);
+
+            box-shadow:
+                0 15px 40px
+                rgba(229,9,20,.3);
+        }
+
+        .secondary-button {
+            display: inline-flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            color: #ddd;
+
+            text-decoration: none;
+
+            padding: 15px 25px;
+
+            border-radius: 8px;
+
+            border:
+                1px solid #333;
+
+            background:
+                rgba(255,255,255,.04);
+
+            font-size: 15px;
+
+            font-weight: 600;
+
+            transition: .2s;
+        }
+
+        .secondary-button:hover {
+            background:
+                rgba(255,255,255,.08);
+
+            border-color: #555;
+        }
+
+
+        /* =====================================
+           PLANOS
+        ===================================== */
+
+        .plans {
+            padding:
+                100px 7% 120px;
+
+            position: relative;
+        }
+
+        .section-header {
+            text-align: center;
+
+            max-width: 650px;
+
+            margin:
+                0 auto 50px;
+        }
+
+        .section-header span {
+            color: #e50914;
+
+            font-size: 12px;
+
+            font-weight: 800;
+
+            letter-spacing: 2px;
+
+            text-transform: uppercase;
+        }
+
+        .section-header h2 {
+            font-size: 40px;
+
+            letter-spacing: -1.5px;
+
+            margin: 10px 0 12px;
+        }
+
+        .section-header p {
+            color: #777;
+
+            font-size: 15px;
+
+            line-height: 1.6;
+        }
+
+        .plans-grid {
+            max-width: 1100px;
+
+            margin: 0 auto;
+
+            display: grid;
+
+            grid-template-columns:
+                repeat(3, 1fr);
+
+            gap: 20px;
+        }
+
+        .plan {
+            position: relative;
+
+            padding: 30px;
+
+            border-radius: 16px;
+
+            background:
+                rgba(18,18,18,.85);
+
+            border:
+                1px solid #292929;
+
+            transition: .3s;
+
+            backdrop-filter: blur(15px);
+        }
+
+        .plan:hover {
+            transform:
+                translateY(-7px);
+
+            border-color: #444;
+
+            box-shadow:
+                0 20px 60px
+                rgba(0,0,0,.35);
+        }
+
+        .plan.featured {
+            border-color:
+                rgba(229,9,20,.6);
+
+            box-shadow:
+                0 15px 60px
+                rgba(229,9,20,.08);
+        }
+
+        .popular {
+            position: absolute;
+
+            top: -12px;
+            right: 20px;
+
+            padding: 6px 12px;
+
+            border-radius: 100px;
+
+            background: #e50914;
+
+            color: white;
+
+            font-size: 10px;
+
+            font-weight: 800;
+
+            letter-spacing: .8px;
+
+            text-transform: uppercase;
+        }
+
+        .plan-name {
+            font-size: 19px;
+
+            font-weight: 700;
+
+            margin-bottom: 8px;
+        }
+
+        .plan-description {
+            color: #777;
+
+            font-size: 13px;
+
+            min-height: 40px;
+
+            line-height: 1.5;
+        }
+
+        .price {
+            margin:
+                25px 0;
+
+            display: flex;
+
+            align-items: baseline;
+
+            gap: 4px;
+        }
+
+        .price strong {
+            font-size: 42px;
+
+            letter-spacing: -2px;
+        }
+
+        .price span {
+            color: #777;
+
+            font-size: 13px;
+        }
+
+        .plan-features {
+            list-style: none;
+
+            border-top:
+                1px solid #292929;
+
+            padding-top: 20px;
+
+            margin-bottom: 25px;
+        }
+
+        .plan-features li {
+            color: #bbb;
+
+            font-size: 13px;
+
+            padding: 7px 0;
+        }
+
+        .plan-features li::before {
+            content: "✓";
+
+            color: #e50914;
+
+            font-weight: 900;
+
+            margin-right: 9px;
+        }
+
+        .plan-button {
+            display: block;
+
+            width: 100%;
+
+            padding: 13px;
+
+            border-radius: 8px;
+
+            text-align: center;
+
+            text-decoration: none;
+
+            color: white;
+
+            border:
+                1px solid #333;
+
+            font-size: 14px;
+
+            font-weight: 700;
+
+            transition: .2s;
+        }
+
+        .plan.featured .plan-button {
+            background: #e50914;
+
+            border-color: #e50914;
+        }
+
+        .plan-button:hover {
+            background:
+                rgba(255,255,255,.06);
+
+            border-color: #555;
+        }
+
+        .plan.featured .plan-button:hover {
+            background: #f40612;
+
+            border-color: #f40612;
+        }
+
+
+        /* =====================================
+           CTA
+        ===================================== */
+
+        .cta {
+            padding:
+                80px 20px 100px;
+
+            text-align: center;
+        }
+
+        .cta-box {
+            max-width: 900px;
+
+            margin: auto;
+
+            padding: 65px 30px;
+
+            border-radius: 20px;
+
+            background:
+                linear-gradient(
+                    135deg,
+                    rgba(229,9,20,.12),
+                    rgba(20,20,20,.8)
+                );
+
+            border:
+                1px solid
+                rgba(229,9,20,.18);
+        }
+
+        .cta h2 {
+            font-size: 38px;
+
+            letter-spacing: -1.5px;
+
+            margin-bottom: 12px;
+        }
+
+        .cta p {
+            color: #888;
+
+            margin-bottom: 28px;
+
+            font-size: 15px;
+        }
+
+
+        /* =====================================
+           FOOTER
+        ===================================== */
+
+        footer {
+            border-top:
+                1px solid #181818;
+
+            padding:
+                25px 7%;
+
+            display: flex;
+
+            justify-content: space-between;
+
+            align-items: center;
+
+            color: #555;
+
+            font-size: 11px;
+        }
+
+        footer .footer-logo {
+            font-size: 16px;
+
+            font-weight: 800;
+
+            color: #777;
+        }
+
+        footer .footer-logo span {
+            color: #e50914;
+        }
+
+
+        /* =====================================
+           ANIMAÇÕES
+        ===================================== */
+
+        @keyframes heroEnter {
+
+            from {
+                opacity: 0;
+
+                transform:
+                    translateY(25px);
+            }
+
+            to {
+                opacity: 1;
+
+                transform:
+                    translateY(0);
+            }
+        }
+
+        @keyframes glowOne {
+
+            0%, 100% {
+                transform:
+                    translate(0,0);
+            }
+
+            50% {
+                transform:
+                    translate(80px,60px);
+            }
+        }
+
+        @keyframes glowTwo {
+
+            0%, 100% {
+                transform:
+                    translate(0,0);
+            }
+
+            50% {
+                transform:
+                    translate(-70px,-40px);
+            }
+        }
+
+        @keyframes particlesMove {
+
+            from {
+                background-position:
+                    0 0;
+            }
+
+            to {
+                background-position:
+                    50px 50px;
+            }
+        }
+
+
+        /* =====================================
+           RESPONSIVO
+        ===================================== */
+
+        @media (max-width: 850px) {
+
+            .plans-grid {
+                grid-template-columns: 1fr;
+
+                max-width: 450px;
+            }
+
+            .hero {
+                padding-top: 130px;
+            }
+
+            .hero h1 {
+                letter-spacing: -2px;
+            }
+
+            .section-header h2 {
+                font-size: 32px;
+            }
+        }
+
+        @media (max-width: 550px) {
+
+            nav {
+                padding: 0 20px;
+            }
+
+            .nav-login {
+                display: none;
+            }
+
+            .logo {
+                font-size: 25px;
+            }
+
+            .hero {
+                padding:
+                    120px 20px 70px;
+            }
+
+            .hero-description {
+                font-size: 15px;
+            }
+
+            .hero-buttons {
+                flex-direction: column;
+            }
+
+            .primary-button,
+            .secondary-button {
+                width: 100%;
+            }
+
+            .plans {
+                padding:
+                    70px 20px 80px;
+            }
+
+            .plan {
+                padding: 25px;
+            }
+
+            .cta h2 {
+                font-size: 29px;
+            }
+
+            footer {
+                flex-direction: column;
+
+                gap: 10px;
+            }
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+
+    <!-- =================================
+         FUNDO
+    ================================= -->
+
+    <div class="background">
+
+        <div class="glow glow-1"></div>
+
+        <div class="glow glow-2"></div>
+
+        <div class="glow glow-3"></div>
+
+        <div class="particles"></div>
+
+    </div>
+
+
+    <!-- =================================
+         NAVBAR
+    ================================= -->
+
+    <nav>
+
+        <div class="logo">
+            <span>Pire</span><strong>Flix</strong>
+        </div>
+
+        <div class="nav-buttons">
+
+            <a
+                href="./front/pages/login.html"
+                class="nav-login"
+            >
+                Entrar
+            </a>
+
+            <a
+                href="./front/pages/register.html"
+                class="nav-register"
+            >
+                Criar conta
+            </a>
+
+        </div>
+
+    </nav>
+
+
+    <!-- =================================
+         HERO
+    ================================= -->
+
+    <main>
+
+        <section class="hero">
+
+            <div class="hero-content">
+
+                <div class="badge">
+
+                    <span class="badge-dot"></span>
+
+                    Seu entretenimento começa aqui
+
+                </div>
+
+                <h1>
+                    Filmes e séries
+                    <span>sem limites.</span>
+                </h1>
+
+                <p class="hero-description">
+
+                    Entre no PireFlix e descubra um mundo
+                    de filmes e séries para assistir quando
+                    quiser. Escolha seu plano e comece agora.
+
+                </p>
+
+                <div class="hero-buttons">
+
+                    <a
+                        href="./front/pages/register.html"
+                        class="primary-button"
+                    >
+                        Começar agora →
+                    </a>
+
+                    <a
+                        href="#plans"
+                        class="secondary-button"
+                    >
+                        Ver planos
+                    </a>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- =================================
+             PLANOS
+        ================================= -->
+
+        <section
+            class="plans"
+            id="plans"
+        >
+
+            <div class="section-header">
+
+                <span>
+                    Escolha seu plano
+                </span>
+
+                <h2>
+                    Assista do seu jeito.
+                </h2>
+
+                <p>
+                    Escolha o plano que combina com você.
+                    Você poderá alterar seu plano depois.
+                </p>
+
+            </div>
+
+
+            <div class="plans-grid">
+
+
+                <!-- PLANO 1 -->
+
+                <article class="plan">
+
+                    <h3 class="plan-name">
+                        Básico
+                    </h3>
+
+                    <p class="plan-description">
+                        Para quem quer começar.
+                    </p>
+
+                    <div class="price">
+
+                        <strong>
+                            R$ 14,90
+                        </strong>
+
+                        <span>
+                            /mês
+                        </span>
+
+                    </div>
+
+                    <ul class="plan-features">
+
+                        <li>
+                            Qualidade HD
+                        </li>
+
+                        <li>
+                            1 tela simultânea
+                        </li>
+
+                        <li>
+                            Catálogo completo
+                        </li>
+
+                        <li>
+                            Acesso em dispositivos compatíveis
+                        </li>
+
+                    </ul>
+
+                    <a
+                        href="./front/pages/register.html"
+                        class="plan-button"
+                    >
+                        Escolher plano
+                    </a>
+
+                </article>
+
+
+                <!-- PLANO 2 -->
+
+                <article class="plan featured">
+
+                    <div class="popular">
+                        Mais popular
+                    </div>
+
+                    <h3 class="plan-name">
+                        Padrão
+                    </h3>
+
+                    <p class="plan-description">
+                        O equilíbrio perfeito.
+                    </p>
+
+                    <div class="price">
+
+                        <strong>
+                            R$ 24,90
+                        </strong>
+
+                        <span>
+                            /mês
+                        </span>
+
+                    </div>
+
+                    <ul class="plan-features">
+
+                        <li>
+                            Qualidade Full HD
+                        </li>
+
+                        <li>
+                            2 telas simultâneas
+                        </li>
+
+                        <li>
+                            Catálogo completo
+                        </li>
+
+                        <li>
+                            Downloads para assistir offline
+                        </li>
+
+                    </ul>
+
+                    <a
+                        href="./front/pages/register.html"
+                        class="plan-button"
+                    >
+                        Escolher plano
+                    </a>
+
+                </article>
+
+
+                <!-- PLANO 3 -->
+
+                <article class="plan">
+
+                    <h3 class="plan-name">
+                        Premium
+                    </h3>
+
+                    <p class="plan-description">
+                        A melhor experiência.
+                    </p>
+
+                    <div class="price">
+
+                        <strong>
+                            R$ 34,90
+                        </strong>
+
+                        <span>
+                            /mês
+                        </span>
+
+                    </div>
+
+                    <ul class="plan-features">
+
+                        <li>
+                            Qualidade 4K Ultra HD
+                        </li>
+
+                        <li>
+                            4 telas simultâneas
+                        </li>
+
+                        <li>
+                            Catálogo completo
+                        </li>
+
+                        <li>
+                            Downloads offline
+                        </li>
+
+                    </ul>
+
+                    <a
+                        href="./front/pages/register.html"
+                        class="plan-button"
+                    >
+                        Escolher plano
+                    </a>
+
+                </article>
+
+
+            </div>
+
+        </section>
+
+
+        <!-- =================================
+             CTA
+        ================================= -->
+
+        <section class="cta">
+
+            <div class="cta-box">
+
+                <h2>
+                    Pronto para começar?
+                </h2>
+
+                <p>
+                    Crie sua conta gratuitamente e escolha
+                    seu plano.
+                </p>
+
+                <a
+                    href="./front/pages/register.html"
+                    class="primary-button"
+                >
+                    Criar minha conta
+                </a>
+
+            </div>
+
+        </section>
+
+    </main>
+
+
+    <!-- =================================
+         FOOTER
+    ================================= -->
+
+    <footer>
+
+        <div class="footer-logo">
+
+            <span>Pire</span>Flix
+
+        </div>
+
+        <div>
+            © 2026 PireFlix. Todos os direitos reservados.
+        </div>
+
+    </footer>
+
+
+</body>
+
+</html>
