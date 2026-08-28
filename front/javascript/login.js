@@ -68,16 +68,13 @@ loginForm.addEventListener("submit", async (event) => {
         const data = await response.json();
     */
 
-    // Apenas demonstração
+    // Demonstração — redireciona para a home após login
     setTimeout(() => {
 
         loginButton.classList.remove("loading");
         loginButton.disabled = false;
 
-        console.log("Email:", email);
-        console.log("Senha:", password);
-
-        alert("Login enviado!");
+        window.location.href = "home.html";
 
     }, 1200);
 });

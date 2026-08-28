@@ -1,24 +1,9 @@
 /* =========================
-   TOKEN DO TMDB
-========================= */
-
-const API_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI1ZGFkNGZmYmIwYWFhYjBlMTgwM2FhMGM1M2M3NTBkMSIsIm5iZiI6MTc4NzM1ODQwOS4wMTEwMDAyLCJzdWIiOiI2YTg4ZWNjOTYyZmJiMmM4NTJhMTA4NDYiLCJzY29wZXMiOlsiYXBpX3JlYWQiXSwidmVyc2lvbiI6MX0.ysQr2Oje_YnxQF6oDv37hrLVs2I3iORdguc-w0MrRKg";
-
-/* =========================
-   PEGAR TOKEN DO .ENV
-   
-========================= */
-
-/* =========================
    CONFIGURAÇÃO
+   Usa o backend local como proxy para o TMDB
 ========================= */
 
-const API_URL = "https://api.themoviedb.org/3";
-
-const headers = {
-    Authorization: `Bearer ${API_TOKEN}`,
-    "Content-Type": "application/json"
-};
+const API_URL = "/api";
 
 
 /* =========================
@@ -79,11 +64,7 @@ async function buscarFilmes() {
     try {
 
         const resposta = await fetch(
-            `${API_URL}/movie/popular?language=pt-BR&page=1`,
-            {
-                method: "GET",
-                headers: headers
-            }
+            `${API_URL}/filmes`
         );
 
 
@@ -120,7 +101,7 @@ async function buscarFilmes() {
             <div class="loading">
                 Erro ao carregar os filmes.
                 <br><br>
-                Verifique o seu Token do TMDB.
+                Verifique se o servidor está rodando (npm start).
             </div>
         `;
 
@@ -138,11 +119,7 @@ async function buscarSeries() {
     try {
 
         const resposta = await fetch(
-            `${API_URL}/tv/popular?language=pt-BR&page=1`,
-            {
-                method: "GET",
-                headers: headers
-            }
+            `${API_URL}/series`
         );
 
 
@@ -532,11 +509,7 @@ async function pesquisarTMDB(
 
         const resposta =
             await fetch(
-                `${API_URL}/search/multi?query=${encodeURIComponent(texto)}&language=pt-BR&page=1&include_adult=false`,
-                {
-                    method: "GET",
-                    headers: headers
-                }
+                `${API_URL}/pesquisa?query=${encodeURIComponent(texto)}`
             );
 
 
@@ -584,7 +557,7 @@ async function pesquisarTMDB(
             <div class="loading">
                 Erro ao pesquisar.
                 <br><br>
-                Verifique sua conexão ou o Token do TMDB.
+                Verifique se o servidor está rodando (npm start).
             </div>
         `;
 

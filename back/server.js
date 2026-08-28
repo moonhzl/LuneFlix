@@ -1,4 +1,6 @@
-require("dotenv").config();
+require("dotenv").config({
+    path: require("path").join(__dirname, ".env")
+});
 
 const express = require("express");
 const path = require("path");
@@ -9,8 +11,10 @@ const PORT = process.env.PORT || 3000;
 const API_URL = process.env.TMDB_API_URL;
 const API_TOKEN = process.env.TMDB_API_TOKEN;
 
-// Servir os arquivos do frontend
-app.use(express.static(__dirname));
+const projectRoot = path.join(__dirname, "..");
+
+// Servir todo o projeto (index.html, front/, etc.)
+app.use(express.static(projectRoot));
 
 // Função para consultar a API do TMDB
 async function tmdbFetch(endpoint) {
