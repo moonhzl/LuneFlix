@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>PireFlix — Login</title>
+
+    <link rel="stylesheet" href="../css/login.css">
+</head>
+
+<body>
+
+    <!-- Fundo animado -->
+    <div class="background">
+        <div class="glow glow-1"></div>
+        <div class="glow glow-2"></div>
+        <div class="glow glow-3"></div>
+
+        <div class="particles"></div>
+    </div>
+
+    <!-- Logo -->
+    <header class="logo">
+        <span>Pire</span><strong>Flix</strong>
+    </header>
+
+    <!-- Login -->
+    <main class="login-container">
+
+        <div class="login-card">
+
+            <div class="login-header">
+                <div class="icon">
+                    ▶
+                </div>
+
+                <h1>Bem-vindo de volta</h1>
+
+                <p>
+                    Entre na sua conta e continue assistindo.
+                </p>
+            </div>
+
+            <form id="loginForm">
+
+                <div class="input-group">
+                    <label for="email">E-mail</label>
+
+                    <div class="input-wrapper">
+                        <span class="input-icon">@</span>
+
+                        <input
+                            type="email"
+                            id="email"
+                            placeholder="seu@email.com"
+                            autocomplete="email"
+                            required
+                        >
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label for="password">Senha</label>
+
+                    <div class="input-wrapper">
+
+                        <span class="input-icon">●</span>
+
+                        <input
+                            type="password"
+                            id="password"
+                            placeholder="Digite sua senha"
+                            autocomplete="current-password"
+                            required
+                        >
+
+                        <button
+                            type="button"
+                            class="password-toggle"
+                            id="togglePassword"
+                        >
+                            Mostrar
+                        </button>
+
+                    </div>
+                </div>
+
+                <div class="login-options">
+
+                    <label class="remember">
+                        <input type="checkbox" id="remember">
+                        <span></span>
+                        Lembrar de mim
+                    </label>
+
+                    <a href="#" id="forgotPassword">
+                        Esqueci minha senha
+                    </a>
+
+                </div>
+
+                <button
+                    type="submit"
+                    class="login-button"
+                    id="loginButton"
+                >
+                    <span class="button-text">
+                        Entrar
+                    </span>
+
+                    <span class="loader"></span>
+                </button>
+
+                <div class="divider">
+                    <span>ou</span>
+                </div>
+
+                <button type="button" class="social-login">
+                    <span>G</span>
+                    Continuar com Google
+                </button>
+
+            </form>
+
+            <p class="register">
+                Ainda não possui uma conta?
+                <a href="#">Criar conta</a>
+            </p>
+
+        </div>
+
+    </main>
+
+    <footer>
+        © 2026 PireFlix. Todos os direitos reservados.
+    </footer>
+
+    <script src="../javascript/login.js"></script>
+
+</body>
+</html>
