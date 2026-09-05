@@ -1,5 +1,5 @@
 {
-    "name": "piresflix",
+    "name": "luneflix",
     "version": "1.0.0",
     "main": "back/server.js",
     "scripts": {

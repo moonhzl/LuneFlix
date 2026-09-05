@@ -44,39 +44,27 @@ loginForm.addEventListener("submit", async (event) => {
     loginButton.classList.add("loading");
     loginButton.disabled = true;
 
-    /*
-        Aqui você vai conectar seu backend.
-
-        Exemplo:
-
-        const response = await fetch(
-            "http://localhost:3000/api/login",
-            {
-                method: "POST",
-
-                headers: {
-                    "Content-Type": "application/json"
-                },
-
-                body: JSON.stringify({
-                    email,
-                    password
-                })
-            }
-        );
-
+    try {
+        const response = await fetch("/api/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password })
+        });
         const data = await response.json();
-    */
 
-    // Demonstração — redireciona para a home após login
-    setTimeout(() => {
+        if (!response.ok) {
+            throw new Error(data.error || "E-mail ou senha inválidos.");
+        }
 
+        if (document.getElementById("remember").checked) {
+            localStorage.setItem("luneflixUser", JSON.stringify(data.user));
+        }
+        window.location.href = "home.html";
+    } catch (error) {
+        alert(error.message);
         loginButton.classList.remove("loading");
         loginButton.disabled = false;
-
-        window.location.href = "home.html";
-
-    }, 1200);
+    }
 });
 
 

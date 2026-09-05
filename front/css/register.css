@@ -60,7 +60,7 @@ body {
     width: 450px;
     height: 450px;
 
-    background: #e50914;
+    background: #8b5cf6;
 
     top: -200px;
     left: -150px;
@@ -72,7 +72,7 @@ body {
     width: 400px;
     height: 400px;
 
-    background: #7a0000;
+    background: #4c1d95;
 
     right: -150px;
     top: 20%;
@@ -84,7 +84,7 @@ body {
     width: 350px;
     height: 350px;
 
-    background: #e50914;
+    background: #8b5cf6;
 
     bottom: -200px;
     left: 40%;
@@ -154,7 +154,7 @@ body {
 }
 
 .logo span {
-    color: #e50914;
+    color: #8b5cf6;
 }
 
 .logo strong {
@@ -193,7 +193,6 @@ body {
     max-width: 430px;
 
     padding: 35px 40px;
-
     background:
         rgba(15, 15, 15, 0.88);
 
@@ -209,7 +208,6 @@ body {
         rgba(255, 255, 255, 0.04);
 
     backdrop-filter: blur(20px);
-
     animation: cardEnter 0.6s ease;
 }
 
@@ -239,12 +237,12 @@ body {
     border-radius: 14px;
 
     background:
-        rgba(229, 9, 20, 0.12);
+        rgba(139, 92, 246, 0.12);
 
     border:
-        1px solid rgba(229, 9, 20, 0.25);
+        1px solid rgba(139, 92, 246, 0.25);
 
-    color: #e50914;
+    color: #8b5cf6;
 
     font-size: 28px;
 
@@ -346,11 +344,11 @@ body {
 
 .input-wrapper input:focus {
 
-    border-color: #e50914;
+    border-color: #8b5cf6;
 
     box-shadow:
         0 0 0 3px
-        rgba(229, 9, 20, 0.10);
+        rgba(139, 92, 246, 0.10);
 }
 
 
@@ -419,7 +417,7 @@ body {
 
     border-radius: 9px;
 
-    background: #e50914;
+    background: #8b5cf6;
 
     color: #ffffff;
 
@@ -446,7 +444,7 @@ body {
 
     box-shadow:
         0 10px 30px
-        rgba(229, 9, 20, 0.25);
+        rgba(139, 92, 246, 0.25);
 }
 
 .register-button:active {
@@ -612,7 +610,7 @@ body {
 
 .login a:hover {
 
-    color: #e50914;
+    color: #8b5cf6;
 }
 
 

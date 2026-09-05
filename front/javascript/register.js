@@ -144,65 +144,28 @@ registerForm.addEventListener("submit", async (event) => {
 
     try {
 
-        /*
-         * FUTURO:
-         *
-         * Aqui vamos conectar com:
-         *
-         * POST /api/register
-         *
-         * Exemplo:
-         *
-         * const response = await fetch(
-         *     "http://localhost:3000/api/register",
-         *     {
-         *         method: "POST",
-         *         headers: {
-         *             "Content-Type": "application/json"
-         *         },
-         *         body: JSON.stringify({
-         *             name,
-         *             email,
-         *             password: passwordValue
-         *         })
-         *     }
-         * );
-         */
-
-
-        // Temporário para testar a interface
-
-        await new Promise(resolve => {
-
-            setTimeout(resolve, 1000);
-
+        const response = await fetch("/api/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name, email, password: passwordValue })
         });
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || "Não foi possível criar a conta.");
+        }
 
 
-        showMessage(
-            "Conta criada com sucesso!",
-            "success"
-        );
-
-
+        showMessage("Conta criada com sucesso! Redirecionando...", "success");
         registerForm.reset();
-
-
-        setTimeout(() => {
-
-            window.location.href = "login.html";
-
-        }, 1200);
+        setTimeout(() => { window.location.href = "login.html"; }, 1000);
 
 
     } catch (error) {
 
         console.error(error);
 
-        showMessage(
-            "Ocorreu um erro ao criar sua conta.",
-            "error"
-        );
+        showMessage(error.message || "Ocorreu um erro ao criar sua conta.", "error");
 
     } finally {
 
