@@ -4,6 +4,7 @@ require("dotenv").config({
 
 const express = require("express");
 const path = require("path");
+const { spawn } = require("child_process");
 
 const app = express();
 
@@ -12,9 +13,43 @@ const API_URL = process.env.TMDB_API_URL;
 const API_TOKEN = process.env.TMDB_API_TOKEN;
 
 const projectRoot = path.join(__dirname, "..");
+const authController = path.join(__dirname, "controllers", "authController.py");
+
+app.use(express.json());
 
 // Servir todo o projeto (index.html, front/, etc.)
 app.use(express.static(projectRoot));
+
+function runAuthController(payload, res) {
+    const controller = spawn("python", [authController]);
+    let stdout = "";
+    let stderr = "";
+
+    controller.stdout.on("data", chunk => { stdout += chunk; });
+    controller.stderr.on("data", chunk => { stderr += chunk; });
+    controller.on("error", error => {
+        console.error("Erro na autenticação:", error);
+        res.status(500).json({ erro: "Python não está disponível para a autenticação." });
+    });
+    controller.on("close", code => {
+        if (code !== 0) {
+            console.error("Controlador Python falhou:", stderr);
+            return res.status(500).json({ erro: "Não foi possível processar a autenticação." });
+        }
+
+        try {
+            const result = JSON.parse(stdout);
+            return res.status(result.ok ? 200 : 401).json(result);
+        } catch (parseError) {
+            console.error("Resposta inválida do controlador Python:", parseError);
+            return res.status(500).json({ erro: "Resposta inválida da autenticação." });
+        }
+    });
+    controller.stdin.end(JSON.stringify(payload));
+}
+
+app.post("/api/register", (req, res) => runAuthController({ action: "register", ...req.body }, res));
+app.post("/api/login", (req, res) => runAuthController({ action: "login", ...req.body }, res));
 
 // Função para consultar a API do TMDB
 async function tmdbFetch(endpoint) {
@@ -94,5 +129,5 @@ app.get("/api/pesquisa", async (req, res) => {
 
 // Iniciar servidor
 app.listen(PORT, () => {
-    console.log(`PiresFlix rodando em http://localhost:${PORT}`);
+    console.log(`LUNEFLIX rodando em http://localhost:${PORT}`);
 });
