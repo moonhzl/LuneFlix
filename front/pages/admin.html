@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LUNEFLIX Admin</title>
+    <link rel="stylesheet" href="/front/css/admin.css">
+</head>
+<body>
+    <div class="ambient ambient-one"></div><div class="ambient ambient-two"></div>
+    <section id="loginView" class="admin-login">
+        <div class="login-mark"><span>✦</span><strong>LUNE<span>FLIX</span></strong></div>
+        <div class="login-panel glass">
+            <p class="eyebrow">CENTRAL DE CONTROLE</p>
+            <h1>Acesso administrativo</h1>
+            <p class="muted">Entre com uma conta autorizada para gerenciar a plataforma.</p>
+            <form id="adminLoginForm">
+                <label>E-mail<input id="adminEmail" type="email" autocomplete="username" required placeholder="admin@luneflix.com"></label>
+                <label>Senha<input id="adminPassword" type="password" autocomplete="current-password" required placeholder="Sua senha"></label>
+                <button class="primary-button" type="submit">Entrar no painel <span>→</span></button>
+                <p id="loginError" class="form-error"></p>
+            </form>
+        </div>
+    </section>
+
+    <div id="appView" class="admin-shell hidden">
+        <aside class="sidebar">
+            <div class="brand"><span class="brand-icon">✦</span><span>LUNE<strong>FLIX</strong></span><small>ADMIN</small></div>
+            <nav id="mainNav">
+                <button class="nav-item active" data-section="dashboard"><span>⌂</span>Dashboard</button>
+                <button class="nav-item" data-section="users"><span>◉</span>Usuários</button>
+                <button class="nav-item" data-section="payments"><span>◈</span>Pagamentos</button>
+                <button class="nav-item" data-section="movies"><span>▣</span>Filmes</button>
+                <button class="nav-item" data-section="modules"><span>⊞</span>Módulos</button>
+                <button class="nav-item" data-section="coupons"><span>♢</span>Cupons</button>
+                <button class="nav-item" data-section="settings"><span>⚙</span>Configurações</button>
+                <button class="nav-item" data-section="logs"><span>≡</span>Logs</button>
+            </nav>
+            <div class="sidebar-foot"><div class="status-dot"></div><div><strong>Todos os sistemas</strong><small>Operação normal</small></div></div>
+        </aside>
+        <main class="main-content">
+            <header class="topbar"><div><p class="eyebrow" id="sectionKicker">VISÃO GERAL</p><h1 id="sectionTitle">Dashboard</h1></div><div class="top-actions"><button class="icon-button" title="Notificações">♧<i></i></button><div class="admin-profile"><div class="avatar" id="adminAvatar">A</div><div><strong id="adminName">Administrador</strong><small>Administrador</small></div></div><button id="logoutButton" class="logout-button">Sair</button></div></header>
+            <div id="toast" class="toast"></div>
+            <div id="content" class="content-area"></div>
+        </main>
+    </div>
+    <script src="/front/javascript/admin.js"></script>
+</body>
+</html>

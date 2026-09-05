@@ -28,6 +28,11 @@ def initialize_database():
 			)
 			"""
 		)
+		connection.execute("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user'") if "role" not in [row[1] for row in connection.execute("PRAGMA table_info(users)")] else None
+		connection.execute("ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'active'") if "status" not in [row[1] for row in connection.execute("PRAGMA table_info(users)")] else None
+		connection.execute("ALTER TABLE users ADD COLUMN last_login TEXT") if "last_login" not in [row[1] for row in connection.execute("PRAGMA table_info(users)")] else None
+		connection.execute("ALTER TABLE users ADD COLUMN plan TEXT NOT NULL DEFAULT 'free'") if "plan" not in [row[1] for row in connection.execute("PRAGMA table_info(users)")] else None
+		connection.execute("UPDATE users SET role = 'admin' WHERE lower(name) = 'admin'")
 
 
 def _hash_password(password, salt=None):
@@ -62,9 +67,10 @@ def create_user(name, email, password):
 
 
 def authenticate_user(email, password):
+	initialize_database()
 	with get_connection() as connection:
 		user = connection.execute(
-			"SELECT id, name, email, password_hash, password_salt FROM users WHERE email = ?",
+			"SELECT id, name, email, password_hash, password_salt, role, status, plan FROM users WHERE email = ?",
 			(email.strip().lower(),),
 		).fetchone()
 
@@ -75,4 +81,20 @@ def authenticate_user(email, password):
 	if not secrets.compare_digest(password_hash, user["password_hash"]):
 		return None
 
-	return {"id": user["id"], "name": user["name"], "email": user["email"]}
+	if user["status"] != "active":
+		return None
+
+	with get_connection() as connection:
+		connection.execute(
+			"UPDATE users SET last_login = ? WHERE id = ?",
+			(datetime.now(timezone.utc).isoformat(), user["id"]),
+		)
+
+	return {
+		"id": user["id"],
+		"name": user["name"],
+		"email": user["email"],
+		"role": user["role"],
+		"status": user["status"],
+		"plan": user["plan"],
+	}
