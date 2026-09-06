@@ -6,9 +6,6 @@ const passwordInput = document.getElementById("password");
 const togglePassword = document.getElementById("togglePassword");
 
 const loginButton = document.getElementById("loginButton");
-const githubPagesDemo = window.location.hostname.endsWith(".github.io");
-const demoEmail = "demo@luneflix.test";
-const demoPassword = "LuneflixDemo2026!";
 
 
 // ============================
@@ -48,23 +45,6 @@ loginForm.addEventListener("submit", async (event) => {
     loginButton.disabled = true;
 
     try {
-        if (githubPagesDemo) {
-            if (email !== demoEmail || password !== demoPassword) {
-                throw new Error("Use as credenciais de demonstração do GitHub Pages.");
-            }
-
-            if (document.getElementById("remember").checked) {
-                localStorage.setItem("luneflixUser", JSON.stringify({
-                    name: "Demonstração",
-                    email: demoEmail,
-                    role: "user",
-                    demo: true
-                }));
-            }
-            window.location.href = "home.html";
-            return;
-        }
-
         const response = await fetch("/api/login", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
