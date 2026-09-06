@@ -16,7 +16,7 @@ def handle_request(request):
 		return {"ok": True, "user": user}
 
 	if action == "login":
-		user = authenticate_user(request["email"], request["password"])
+		user = authenticate_user(request["email"], request["password"], request.get("ip"))
 		if user is None:
 			return {"ok": False, "error": "E-mail ou senha inválidos."}
 		return {"ok": True, "user": user}

@@ -232,7 +232,18 @@ def dispatch(request):
 	if action == "create_coupon": return create_coupon(request)
 	if action == "logs":
 		with get_connection() as connection:
-			return {"ok": True, "data": [row_dict(row) for row in connection.execute("SELECT l.*, u.name AS admin_name FROM admin_logs l LEFT JOIN users u ON u.id = l.admin_id ORDER BY l.id DESC LIMIT 100")]}
+			admin_logs = [row_dict(row) for row in connection.execute("SELECT l.*, u.name AS admin_name FROM admin_logs l LEFT JOIN users u ON u.id = l.admin_id ORDER BY l.id DESC LIMIT 100")]
+			security_logs = [{**row_dict(row), "action": row["type"], "description": row["details"], "status": "warning", "created_at": row["timestamp"], "admin_name": "Sistema"} for row in connection.execute("SELECT * FROM security_logs ORDER BY id DESC LIMIT 100")]
+			logs = sorted(admin_logs + security_logs, key=lambda item: item.get("created_at", ""), reverse=True)
+			if request.get("type"):
+				logs = [item for item in logs if item.get("action") == request["type"]]
+			if request.get("search"):
+				term = request["search"].lower()
+				logs = [item for item in logs if term in f"{item.get('description', '')} {item.get('admin_name', '')}".lower()]
+			page = max(int(request.get("page", 1)), 1)
+			per_page = min(max(int(request.get("per_page", 25)), 1), 100)
+			start = (page - 1) * per_page
+			return {"ok": True, "data": logs[start:start + per_page], "pagination": {"page": page, "per_page": per_page, "total": len(logs)}}
 	if action == "modules":
 		with get_connection() as connection:
 			return {"ok": True, "data": [row_dict(row) for row in connection.execute("SELECT * FROM modules ORDER BY name")]}

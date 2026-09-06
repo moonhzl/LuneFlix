@@ -19,3 +19,15 @@ O banco tambem pode ser consultado pelo terminal:
 ```powershell
 python -c "import sqlite3; db=sqlite3.connect('back/database/usuarios.sqlite'); print(db.execute('SELECT id, name, email, created_at FROM users').fetchall()); db.close()"
 ```
+
+## Catálogo e EmbedMovies
+
+O catálogo novo fica nas tabelas SQLite `catalog_movies` e `catalog_series`, separado da tabela `users`. A busca consulta primeiro esse catálogo; somente quando não há resultado ela consulta o TMDB, salva os metadados e retorna o resultado com `player_url`.
+
+Copie `back/.env.example` para `back/.env` e preencha `TMDB_API_TOKEN`. Use `VIDEO_PROVIDER=embedmovies` para `https://myembed.biz`; `VIDEO_PROVIDER=legacy` mantém o comportamento legado quando houver `video_url`.
+
+Execute `node back/migrate-catalog.js` para migrar registros legados que já tenham um IMDb ID na URL. O script pode ser executado novamente sem duplicar registros.
+
+O painel em `/admin`, na seção **Filmes**, permite buscar um IMDb ID, revisar a prévia, confirmar o cadastro e remover itens. Os eventos administrativos e `LOGIN_DIFFERENT_IP` ficam em **Logs**; IPs não são enviados ao frontend comum.
+
+Antes da migração foi criado o backup local `backups/2026-09-06_193345`. Para restaurar, pare o servidor e copie os arquivos dessa pasta de volta, preservando o `.env` local conforme necessário.

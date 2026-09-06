@@ -6,6 +6,7 @@ const express = require("express");
 const path = require("path");
 const { spawn } = require("child_process");
 const crypto = require("crypto");
+const catalogService = require("./services/catalogService");
 
 const app = express();
 
@@ -133,7 +134,7 @@ app.get("/api/admin/users", (req, res) => runAdminController({ action: "users", 
 app.patch("/api/admin/users/:id", (req, res) => runAdminController({ action: "update_user", id: req.params.id, admin_id: req.admin.id, ip: req.ip, ...req.body }, res));
 app.post("/api/admin/users/:id/reset-password", (req, res) => runAdminController({ action: "reset_password", id: req.params.id, admin_id: req.admin.id, ip: req.ip, ...req.body }, res));
 app.delete("/api/admin/users/:id", (req, res) => runAdminController({ action: "delete_user", id: req.params.id, admin_id: req.admin.id, ip: req.ip }, res));
-app.get("/api/admin/logs", (req, res) => runAdminController({ action: "logs" }, res));
+app.get("/api/admin/logs", (req, res) => runAdminController({ action: "logs", ...req.query }, res));
 app.get("/api/admin/modules", (req, res) => runAdminController({ action: "modules" }, res));
 app.patch("/api/admin/modules/:key", (req, res) => runAdminController({ action: "toggle_module", key: req.params.key, admin_id: req.admin.id, ip: req.ip, ...req.body }, res));
 app.get("/api/admin/settings", (req, res) => runAdminController({ action: "settings" }, res));
@@ -143,84 +144,80 @@ app.get("/api/admin/movies", (req, res) => runAdminController({ action: "movies"
 app.post("/api/admin/movies", (req, res) => runAdminController({ action: "create_movie", admin_id: req.admin.id, ip: req.ip, ...req.body }, res));
 app.get("/api/admin/coupons", (req, res) => runAdminController({ action: "coupons" }, res));
 app.post("/api/admin/coupons", (req, res) => runAdminController({ action: "create_coupon", admin_id: req.admin.id, ip: req.ip, ...req.body }, res));
+app.get("/api/admin/catalog", async (req, res) => {
+    try { res.json({ ok: true, data: await catalogService.list(req.query.type) }); }
+    catch (error) { res.status(500).json({ ok: false, error: error.message }); }
+});
+app.post("/api/admin/catalog", async (req, res) => {
+    try {
+        let payload = req.body;
+        if (payload.imdb_id && !payload.title) {
+            if (!/^tt\d+$/.test(payload.imdb_id)) return res.status(400).json({ ok: false, error: "IMDb ID inválido." });
+            const details = await catalogService.externalFetch(`/find/${encodeURIComponent(payload.imdb_id)}?external_source=imdb_id&language=pt-BR`);
+            const match = (details.movie_results || [])[0];
+            if (!match) return res.status(404).json({ ok: false, error: "Filme não encontrado no TMDB." });
+            const full = await catalogService.externalFetch(`/movie/${match.id}?language=pt-BR&append_to_response=external_ids`);
+            payload = catalogService.normalizeExternal({ ...match, media_type: "movie", imdb_id: payload.imdb_id }, full);
+        }
+        const item = await catalogService.save(payload);
+        await catalogService.runCatalog({ action: "log", type: "FILME_ADICIONADO", details: `Catálogo atualizado: ${item.title}`, user_id: req.admin.id, ip: req.ip });
+        res.status(201).json({ ok: true, data: item });
+    } catch (error) { res.status(400).json({ ok: false, error: error.message }); }
+});
+app.delete("/api/admin/catalog/:type/:id", async (req, res) => {
+    try {
+        const result = await catalogService.runCatalog({ action: "delete", type: req.params.type, id: req.params.id });
+        await catalogService.runCatalog({ action: "log", type: "FILME_REMOVIDO", details: `Item removido: ${req.params.id}`, user_id: req.admin.id, ip: req.ip });
+        res.json(result);
+    } catch (error) { res.status(400).json({ ok: false, error: error.message }); }
+});
+app.get("/api/admin/catalog/logs", async (req, res) => {
+    try { res.json(await catalogService.runCatalog({ action: "logs" })); }
+    catch (error) { res.status(500).json({ ok: false, error: error.message }); }
+});
 
 app.post("/api/register", (req, res) => runAuthController({ action: "register", ...req.body }, res));
-app.post("/api/login", (req, res) => runAuthController({ action: "login", ...req.body }, res));
+app.post("/api/login", (req, res) => runAuthController({ action: "login", ...req.body, ip: req.ip }, res));
 
-// Função para consultar a API do TMDB
-async function tmdbFetch(endpoint) {
-    const response = await fetch(`${API_URL}${endpoint}`, {
-        method: "GET",
-        headers: {
-            Authorization: `Bearer ${API_TOKEN}`,
-            "Content-Type": "application/json"
-        }
-    });
-
-    if (!response.ok) {
-        throw new Error(`TMDB retornou HTTP ${response.status}`);
+async function catalogResponse(type) {
+    const local = await catalogService.list(type);
+    if (local.length) return { page: 1, results: local, total_results: local.length, total_pages: 1 };
+    const endpoint = type === "movie" ? "/movie/popular?language=pt-BR&page=1" : "/tv/popular?language=pt-BR&page=1";
+    const response = await catalogService.externalFetch(endpoint);
+    const results = [];
+    for (const item of (response.results || []).slice(0, 10)) {
+        const details = await catalogService.externalFetch(type === "movie" ? `/movie/${item.id}?language=pt-BR&append_to_response=external_ids` : `/tv/${item.id}?language=pt-BR&append_to_response=external_ids`);
+        const normalized = catalogService.normalizeExternal({ ...item, media_type: type === "movie" ? "movie" : "tv" }, details);
+        if (normalized.type === "series" || normalized.imdb_id) results.push(await catalogService.save(normalized));
     }
-
-    return await response.json();
+    return { page: 1, results, total_results: results.length, total_pages: 1 };
 }
 
-// Filmes populares
 app.get("/api/filmes", async (req, res) => {
-    try {
-        const dados = await tmdbFetch(
-            "/movie/popular?language=pt-BR&page=1"
-        );
-
-        res.json(dados);
-    } catch (erro) {
-        console.error("Erro ao buscar filmes:", erro);
-
-        res.status(500).json({
-            erro: "Não foi possível carregar os filmes."
-        });
-    }
+    try { res.json(await catalogResponse("movie")); }
+    catch (error) { await catalogService.runCatalog({ action: "log", type: "API_ERROR", details: error.message }); res.status(503).json({ erro: "Catálogo de filmes temporariamente indisponível." }); }
 });
-
-// Séries populares
 app.get("/api/series", async (req, res) => {
-    try {
-        const dados = await tmdbFetch(
-            "/tv/popular?language=pt-BR&page=1"
-        );
-
-        res.json(dados);
-    } catch (erro) {
-        console.error("Erro ao buscar séries:", erro);
-
-        res.status(500).json({
-            erro: "Não foi possível carregar as séries."
-        });
-    }
+    try { res.json(await catalogResponse("series")); }
+    catch (error) { await catalogService.runCatalog({ action: "log", type: "API_ERROR", details: error.message }); res.status(503).json({ erro: "Catálogo de séries temporariamente indisponível." }); }
 });
-
-// Pesquisa
-app.get("/api/pesquisa", async (req, res) => {
-    try {
-        const query = req.query.query;
-
-        if (!query) {
-            return res.status(400).json({
-                erro: "Informe uma pesquisa."
-            });
-        }
-
-        const dados = await tmdbFetch(
-            `/search/multi?query=${encodeURIComponent(query)}&language=pt-BR&page=1&include_adult=false`
-        );
-
-        res.json(dados);
-    } catch (erro) {
-        console.error("Erro na pesquisa:", erro);
-
-        res.status(500).json({
-            erro: "Não foi possível realizar a pesquisa."
-        });
-    }
+app.get("/api/movies", (req, res) => catalogResponse("movie").then(data => res.json(data)).catch(error => res.status(503).json({ error: error.message })));
+app.get("/api/search", async (req, res) => {
+    const query = String(req.query.q || req.query.query || "").trim();
+    if (!query) return res.status(400).json({ error: "Informe uma pesquisa." });
+    try { res.json({ page: 1, results: await catalogService.search(query, req.ip), total_results: 1 }); }
+    catch (error) { await catalogService.runCatalog({ action: "log", type: "API_ERROR", details: error.message, ip: req.ip }); res.status(503).json({ error: "A pesquisa externa está temporariamente indisponível." }); }
+});
+app.get("/api/pesquisa", (req, res) => {
+    req.query.q = req.query.query;
+    return app._router.handle(req, res, () => {});
+});
+app.get("/api/player", (req, res) => {
+    const type = req.query.type === "series" ? "series" : "movie";
+    const item = { type, imdb_id: req.query.imdb_id, tmdb_id: req.query.tmdb_id };
+    const url = catalogService.playerUrl(item, req.query.season, req.query.episode);
+    if (!url) return res.status(400).json({ error: "IDs de reprodução inválidos." });
+    res.json({ url });
 });
 
 // Iniciar servidor

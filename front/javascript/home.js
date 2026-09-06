@@ -367,10 +367,7 @@ function criarCard(
 
     card.addEventListener(
         "click",
-        () => abrirFilme(
-            item.id,
-            tipo
-        )
+        () => abrirFilme(item)
     );
 
 
@@ -463,106 +460,23 @@ function pesquisar() {
    PESQUISAR NO TMDB
 ========================= */
 
-async function pesquisarTMDB(
-    texto
-) {
-
+async function pesquisarTMDB(texto) {
     try {
+        document.getElementById("filmes").style.display = "none";
+        document.getElementById("series").style.display = "none";
+        resultadosPesquisa.classList.add("ativo");
+        tituloPesquisa.textContent = `Resultados para "${texto}"`;
+        pesquisaContainer.innerHTML = '<div class="loading">Pesquisando...</div>';
 
-        /* =========================
-           ESCONDER CATÁLOGOS
-        ========================= */
+        const resposta = await fetch(`${API_URL}/search?q=${encodeURIComponent(texto)}`);
+        const dados = await resposta.json().catch(() => ({}));
+        if (!resposta.ok) throw new Error(dados.error || `Erro HTTP: ${resposta.status}`);
 
-        document.getElementById(
-            "filmes"
-        ).style.display = "none";
-
-
-        document.getElementById(
-            "series"
-        ).style.display = "none";
-
-
-        /* =========================
-           MOSTRAR RESULTADOS
-        ========================= */
-
-        resultadosPesquisa.classList.add(
-            "ativo"
-        );
-
-
-        tituloPesquisa.textContent =
-            `Resultados para "${texto}"`;
-
-
-        pesquisaContainer.innerHTML = `
-            <div class="loading">
-                Pesquisando...
-            </div>
-        `;
-
-
-        /* =========================
-           API MULTI
-        ========================= */
-
-        const resposta =
-            await fetch(
-                `${API_URL}/pesquisa?query=${encodeURIComponent(texto)}`
-            );
-
-
-        if (!resposta.ok) {
-
-            throw new Error(
-                `Erro HTTP: ${resposta.status}`
-            );
-
-        }
-
-
-        const dados =
-            await resposta.json();
-
-
-        /* =========================
-           FILTRAR
-           APENAS FILMES E SÉRIES
-        ========================= */
-
-        const resultados =
-            (dados.results || [])
-                .filter(
-                    item =>
-                        item.media_type === "movie" ||
-                        item.media_type === "tv"
-                );
-
-
-        mostrarResultadosPesquisa(
-            resultados
-        );
-
-
+        mostrarResultadosPesquisa((dados.results || []).filter(item => item.media_type === "movie" || item.media_type === "tv"));
     } catch (erro) {
-
-        console.error(
-            "Erro na pesquisa:",
-            erro
-        );
-
-
-        pesquisaContainer.innerHTML = `
-            <div class="loading">
-                Erro ao pesquisar.
-                <br><br>
-                Verifique se o servidor está rodando (npm start).
-            </div>
-        `;
-
+        console.error("Erro na pesquisa:", erro);
+        pesquisaContainer.innerHTML = `<div class="loading">${erro.message || "Erro ao pesquisar."}<br><br>Verifique se o servidor está rodando (npm start).</div>`;
     }
-
 }
 
 
@@ -570,43 +484,13 @@ async function pesquisarTMDB(
    MOSTRAR RESULTADOS
 ========================= */
 
-function mostrarResultadosPesquisa(
-    resultados
-) {
-
+function mostrarResultadosPesquisa(resultados) {
     pesquisaContainer.innerHTML = "";
-
-
-    if (
-        !resultados ||
-        resultados.length === 0
-    ) {
-
-        pesquisaContainer.innerHTML = `
-            <div class="loading">
-                Nenhum filme ou série encontrado.
-            </div>
-        `;
-
+    if (!resultados || resultados.length === 0) {
+        pesquisaContainer.innerHTML = '<div class="loading">Nenhum filme ou série encontrado.</div>';
         return;
     }
-
-
-    resultados.forEach(item => {
-
-        const card =
-            criarCard(
-                item,
-                item.media_type
-            );
-
-
-        pesquisaContainer.appendChild(
-            card
-        );
-
-    });
-
+    resultados.forEach(item => pesquisaContainer.appendChild(criarCard(item, item.media_type)));
 }
 
 
@@ -614,36 +498,8 @@ function mostrarResultadosPesquisa(
    ABRIR FILME OU SÉRIE
 ========================= */
 
-function abrirFilme(
-    id,
-    tipo
-) {
-
-    let url;
-
-
-    /* =========================
-       FILME
-    ========================= */
-
-    if (tipo === "movie") {
-
-        url =
-            `https://myembed.biz/filme/${id}`;
-
-    }
-
-
-    /* =========================
-       SÉRIE
-    ========================= */
-
-    else if (tipo === "tv") {
-
-        url =
-            `https://myembed.biz/serie/${id}`;
-
-    }
+function abrirFilme(item) {
+    const url = item.player_url;
 
 
     /* =========================

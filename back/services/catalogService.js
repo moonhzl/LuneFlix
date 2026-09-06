@@ -1,0 +1,133 @@
+const path = require("path");
+const { spawn } = require("child_process");
+
+const controller = path.join(__dirname, "..", "controllers", "catalogController.py");
+const API_URL = process.env.TMDB_API_URL || "https://api.themoviedb.org/3";
+const API_TOKEN = process.env.TMDB_API_TOKEN;
+const VIDEO_PROVIDER = process.env.VIDEO_PROVIDER || "embedmovies";
+const externalRequests = new Map();
+const rateWindow = new Map();
+
+function runCatalog(payload) {
+    return new Promise((resolve, reject) => {
+        const process = spawn("python", [controller]);
+        let stdout = "";
+        let stderr = "";
+        process.stdout.on("data", chunk => { stdout += chunk; });
+        process.stderr.on("data", chunk => { stderr += chunk; });
+        process.on("error", reject);
+        process.on("close", code => {
+            try {
+                const result = JSON.parse(stdout);
+                if (code !== 0 || !result.ok) return reject(new Error(result.error || stderr || "Operação de catálogo recusada."));
+                if (!result.ok) return reject(new Error(result.error || "Operação de catálogo recusada."));
+                resolve(result);
+            } catch (error) {
+                if (code !== 0) return reject(new Error(stderr || "Controlador de catálogo indisponível."));
+                reject(new Error(`Resposta inválida do catálogo: ${error.message}`));
+            }
+        });
+        process.stdin.end(JSON.stringify(payload));
+    });
+}
+
+function playerUrl(item, season, episode) {
+    if (VIDEO_PROVIDER === "legacy") return item.video_url || null;
+    if (item.type === "movie" && /^tt\d+$/.test(item.imdb_id || "")) return `https://myembed.biz/filme/${item.imdb_id}`;
+    if (item.type === "series" && /^\d+$/.test(String(item.tmdb_id || ""))) {
+        const suffix = season && episode ? `/${Number(season)}/${Number(episode)}` : "";
+        return `https://myembed.biz/serie/${item.tmdb_id}${suffix}`;
+    }
+    return null;
+}
+
+function publicItem(item) {
+    return {
+        ...item,
+        poster_path: item.poster ? item.poster.replace("https://image.tmdb.org/t/p/w500", "") : null,
+        backdrop_path: item.backdrop ? item.backdrop.replace("https://image.tmdb.org/t/p/original", "") : null,
+        name: item.type === "series" ? item.title : undefined,
+        media_type: item.type === "series" ? "tv" : "movie",
+        release_date: item.release_date,
+        first_air_date: item.first_air_date,
+        vote_average: item.rating,
+        player_url: playerUrl(item)
+    };
+}
+
+function normalizeExternal(item, details) {
+    const type = item.media_type === "tv" || item.type === "series" ? "series" : "movie";
+    const source = details || item;
+    const externalIds = source.external_ids || {};
+    return {
+        id: type === "movie" ? externalIds.imdb_id || item.imdb_id || `tmdb_${item.id}` : `tmdb_${item.id}`,
+        type,
+        title: source.title || source.name || item.title || item.name || "Sem título",
+        original_title: source.original_title || source.original_name || item.original_title || item.original_name,
+        imdb_id: externalIds.imdb_id || item.imdb_id || null,
+        tmdb_id: Number(item.id || source.id),
+        rating: Number(source.vote_average || item.vote_average || 0),
+        overview: source.overview || item.overview || "",
+        poster: source.poster_path ? `https://image.tmdb.org/t/p/w500${source.poster_path}` : null,
+        backdrop: source.backdrop_path ? `https://image.tmdb.org/t/p/original${source.backdrop_path}` : null,
+        release_date: source.release_date || item.release_date || null,
+        first_air_date: source.first_air_date || item.first_air_date || null,
+        genres: (source.genres || []).map(genre => typeof genre === "string" ? genre : genre.name),
+        runtime: source.runtime || null,
+        seasons: source.seasons || []
+    };
+}
+
+async function externalFetch(endpoint) {
+    if (!API_TOKEN) throw new Error("TMDB_API_TOKEN não configurado.");
+    const response = await fetch(`${API_URL}${endpoint}`, {
+        headers: { Authorization: `Bearer ${API_TOKEN}`, "Content-Type": "application/json" },
+        signal: AbortSignal.timeout(8000)
+    });
+    if (!response.ok) throw new Error(`TMDB retornou HTTP ${response.status}`);
+    return response.json();
+}
+
+async function withRateLimit(key, operation) {
+    const now = Date.now();
+    const recent = (rateWindow.get(key) || []).filter(timestamp => now - timestamp < 60000);
+    if (recent.length >= 20) throw new Error("Limite temporário de pesquisas externas atingido.");
+    recent.push(now);
+    rateWindow.set(key, recent);
+    return operation();
+}
+
+async function search(query, clientKey = "anonymous") {
+    const local = await runCatalog({ action: "search", query });
+    if (local.data.length) return local.data.map(publicItem);
+    const cacheKey = query.trim().toLowerCase();
+    if (externalRequests.has(cacheKey)) return (await externalRequests.get(cacheKey)).map(publicItem);
+    const request = withRateLimit(clientKey, async () => {
+        const result = await externalFetch(`/search/multi?query=${encodeURIComponent(query)}&language=pt-BR&page=1&include_adult=false`);
+        const candidates = (result.results || []).filter(item => item.media_type === "movie" || item.media_type === "tv").slice(0, 10);
+        const normalized = [];
+        for (const item of candidates) {
+            const endpoint = item.media_type === "movie" ? `/movie/${item.id}?language=pt-BR&append_to_response=external_ids` : `/tv/${item.id}?language=pt-BR&append_to_response=external_ids`;
+            const details = await externalFetch(endpoint);
+            const normalizedItem = normalizeExternal(item, details);
+            if ((normalizedItem.type === "movie" && normalizedItem.imdb_id) || normalizedItem.type === "series") {
+                normalized.push(await runCatalog({ action: "upsert", item: normalizedItem }).then(response => response.data));
+            }
+        }
+        return normalized;
+    });
+    externalRequests.set(cacheKey, request);
+    try { return (await request).map(publicItem); } finally { externalRequests.delete(cacheKey); }
+}
+
+async function list(type) {
+    const result = await runCatalog({ action: "list", type });
+    return result.data.map(publicItem);
+}
+
+async function save(item) {
+    const result = await runCatalog({ action: "upsert", item });
+    return publicItem(result.data);
+}
+
+module.exports = { list, playerUrl, runCatalog, save, search, normalizeExternal, externalFetch };
