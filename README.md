@@ -46,11 +46,21 @@ NODE_ENV=development
 
 ## Supabase e sessões
 
-Em produção, as sessões são gravadas na tabela `sessions` do Supabase. Execute o conteúdo de `supabase/migrations/001_sessions.sql` no SQL Editor do projeto.
+Em produção, as sessões são gravadas na tabela `sessions` do Supabase. Execute `supabase/migrations/001_sessions.sql` e `supabase/migrations/002_app_schema.sql` no SQL Editor do projeto.
 
 Depois configure `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` no ambiente onde o backend Node será executado. O servidor salva somente o hash do token e a data de expiração; o token original fica no cookie `HttpOnly` do navegador.
 
 Sem essas variáveis, o sistema usa memória apenas para desenvolvimento. Nesse modo, as sessões são perdidas quando o servidor reinicia.
+
+Para enviar os dados existentes do SQLite para o Supabase, configure as variáveis no ambiente e execute na raiz:
+
+```powershell
+$env:SUPABASE_URL="https://seu-projeto.supabase.co"
+$env:SUPABASE_SERVICE_ROLE_KEY="sua_chave_privada"
+python back/migrate-sqlite-to-supabase.py
+```
+
+O script envia usuários, catálogo, pagamentos, cupons, módulos, configurações e logs usando `upsert`. Ele não apaga o SQLite local. Faça um backup antes. A migração das tabelas não troca automaticamente as consultas dos controladores Python; essa adaptação ainda é necessária para o backend deixar de depender do SQLite em produção.
 
 ## Funcionalidades
 
@@ -112,7 +122,7 @@ Os testes iniciam um servidor temporário e verificam que sessões ausentes e re
 1. Hospede o backend Node em um serviço com variáveis de ambiente e HTTPS.
 2. Configure `PORT`, `TMDB_API_TOKEN`, `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY`.
 3. Execute `npm install` durante o build e `npm start` no comando de inicialização.
-4. Execute a migração SQL do Supabase antes de testar login.
+4. Execute as migrações SQL do Supabase e depois a migração do SQLite antes de testar login.
 5. Use `NODE_ENV=production` para ativar cookies `Secure`.
 6. Não publique `.env`, bancos SQLite, backups, logs ou chaves privadas.
 
@@ -124,9 +134,10 @@ O checkout e os webhooks da Infinity Pay ainda precisam ser integrados. Até ess
 back/                       Backend Express e controladores Python
 back/models/                Modelo SQLite de usuários
 back/services/              Catálogo e sessões Supabase
-front/pages/                Páginas HTML
-front/javascript/           Comportamento das telas
-front/css/                  Estilos
+frontend/index.html         Entrada do frontend
+frontend/front/pages/       Páginas HTML
+frontend/front/javascript/  Comportamento das telas
+frontend/front/css/         Estilos
 supabase/migrations/        SQL de infraestrutura do Supabase
 tests/                      Testes automatizados
 ```

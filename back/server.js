@@ -16,6 +16,7 @@ const API_URL = process.env.TMDB_API_URL;
 const API_TOKEN = process.env.TMDB_API_TOKEN;
 
 const projectRoot = path.join(__dirname, "..");
+const frontendRoot = path.join(projectRoot, "frontend");
 const authController = path.join(__dirname, "controllers", "authController.py");
 const adminController = path.join(__dirname, "controllers", "adminController.py");
 const adminSessions = new Map();
@@ -24,8 +25,8 @@ const secureCookie = process.env.NODE_ENV === "production" ? "; Secure" : "";
 
 app.use(express.json());
 
-// Servir todo o projeto (index.html, front/, etc.)
-app.use(express.static(projectRoot));
+// O backend não deve expor código, banco ou arquivos de ambiente.
+app.use(express.static(frontendRoot));
 
 function readCookies(request) {
     return Object.fromEntries((request.headers.cookie || "").split(";").filter(Boolean).map(cookie => {
@@ -117,7 +118,7 @@ function limitAuth(request, response, next) {
     next();
 }
 
-app.get("/admin", (req, res) => res.sendFile(path.join(projectRoot, "front", "pages", "admin.html")));
+app.get("/admin", (req, res) => res.sendFile(path.join(frontendRoot, "front", "pages", "admin.html")));
 
 app.post("/api/admin/login", (req, res) => {
     const controller = spawn("python", [adminController]);
