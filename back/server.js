@@ -66,7 +66,12 @@ function runAuthController(payload, res) {
     controller.on("close", async code => {
         if (code !== 0) {
             console.error("Controlador Python falhou:", stderr);
-            return res.status(500).json({ error: "Não foi possível processar a autenticação." });
+            try {
+                const result = JSON.parse(stdout);
+                return res.status(503).json({ error: result.error || "Serviço de autenticação indisponível." });
+            } catch {
+                return res.status(500).json({ error: "Não foi possível processar a autenticação." });
+            }
         }
 
         try {
@@ -228,9 +233,17 @@ app.post("/api/register", limitAuth, (req, res) => runAuthController({ action: "
 app.post("/api/forgot-password", limitAuth, (req, res) => {
     const controller = spawn(pythonCommand, [authController]);
     let stdout = "";
+    let stderr = "";
     controller.stdout.on("data", chunk => { stdout += chunk; });
+    controller.stderr.on("data", chunk => { stderr += chunk; });
     controller.on("close", code => {
-        if (code !== 0) return res.status(500).json({ error: "Não foi possível processar a solicitação." });
+        if (code !== 0) {
+            console.error("Recuperação de senha falhou:", stderr);
+            try {
+                const result = JSON.parse(stdout);
+                return res.status(503).json({ error: result.error || "Serviço de recuperação indisponível." });
+            } catch { return res.status(500).json({ error: "Não foi possível processar a solicitação." }); }
+        }
         try {
             const result = JSON.parse(stdout);
             if (result.token) console.log(`Link de recuperação (válido por 30 min): ${(process.env.FRONTEND_URL || `http://localhost:${PORT}`).replace(/\/$/, "")}/front/pages/reset-password.html?token=${result.token}`);
@@ -243,12 +256,17 @@ app.post("/api/reset-password", limitAuth, (req, res) => runAuthController({ act
 app.post("/api/login", limitAuth, (req, res) => {
     const controller = spawn(pythonCommand, [authController]);
     let stdout = "";
+    let stderr = "";
     controller.stdout.on("data", chunk => { stdout += chunk; });
+    controller.stderr.on("data", chunk => { stderr += chunk; });
     controller.on("error", () => res.status(500).json({ error: `Python não está disponível (${pythonCommand}).` }));
     controller.on("close", async code => {
         if (code !== 0) {
             console.error("Login comum falhou:", stderr);
-            return res.status(500).json({ error: "Não foi possível autenticar." });
+            try {
+                const result = JSON.parse(stdout);
+                return res.status(503).json({ error: result.error || "Serviço de autenticação indisponível." });
+            } catch { return res.status(500).json({ error: "Não foi possível autenticar." }); }
         }
         try {
             const result = JSON.parse(stdout);

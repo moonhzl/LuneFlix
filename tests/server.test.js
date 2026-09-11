@@ -47,6 +47,6 @@ test("recuperação não revela se o e-mail existe", async () => {
         assert.equal(data.ok, true);
         assert.match(data.message, /Se o e-mail existir/);
     } else {
-        assert.equal(response.status, 500);
+        assert.equal(response.status, 503);
     }
 });
