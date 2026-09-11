@@ -42,7 +42,7 @@ def authenticate_user(email, password, ip=None):
 		return None
 
 	if ip and user.get("last_ip") and user["last_ip"] != ip:
-		insert("security_logs", {"type": "LOGIN_DIFFERENT_IP", "user_id": user["id"], "timestamp": datetime.now(timezone.utc).isoformat(), "ip": ip, "details": "Novo IP detectado durante login"})
+		insert("security_logs", {"id": next_id("security_logs"), "type": "LOGIN_DIFFERENT_IP", "user_id": user["id"], "timestamp": datetime.now(timezone.utc).isoformat(), "ip": ip, "details": "Novo IP detectado durante login"})
 	update("users", {"id": f"eq.{user['id']}"}, {"last_login": datetime.now(timezone.utc).isoformat(), "last_ip": ip})
 
 	return {
