@@ -42,6 +42,6 @@ def handle_request(request):
 if __name__ == "__main__":
 	try:
 		print(json.dumps(handle_request(json.loads(sys.stdin.read())), ensure_ascii=False))
-	except (KeyError, ValueError) as error:
+	except (KeyError, ValueError, RuntimeError) as error:
 		print(json.dumps({"ok": False, "error": str(error)}, ensure_ascii=False))
 		sys.exit(1)

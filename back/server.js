@@ -61,12 +61,12 @@ function runAuthController(payload, res) {
     controller.stderr.on("data", chunk => { stderr += chunk; });
     controller.on("error", error => {
         console.error("Erro na autenticação:", error);
-        res.status(500).json({ erro: `Python não está disponível (${pythonCommand}).` });
+        res.status(500).json({ error: `Python não está disponível (${pythonCommand}).` });
     });
     controller.on("close", async code => {
         if (code !== 0) {
             console.error("Controlador Python falhou:", stderr);
-            return res.status(500).json({ erro: "Não foi possível processar a autenticação." });
+            return res.status(500).json({ error: "Não foi possível processar a autenticação." });
         }
 
         try {
@@ -74,7 +74,7 @@ function runAuthController(payload, res) {
             return res.status(result.ok ? 200 : 401).json(result);
         } catch (parseError) {
             console.error("Resposta inválida do controlador Python:", parseError);
-            return res.status(500).json({ erro: "Resposta inválida da autenticação." });
+            return res.status(500).json({ error: "Resposta inválida da autenticação." });
         }
     });
     controller.stdin.end(JSON.stringify(payload));
@@ -246,7 +246,10 @@ app.post("/api/login", limitAuth, (req, res) => {
     controller.stdout.on("data", chunk => { stdout += chunk; });
     controller.on("error", () => res.status(500).json({ error: `Python não está disponível (${pythonCommand}).` }));
     controller.on("close", async code => {
-        if (code !== 0) return res.status(500).json({ error: "Não foi possível autenticar." });
+        if (code !== 0) {
+            console.error("Login comum falhou:", stderr);
+            return res.status(500).json({ error: "Não foi possível autenticar." });
+        }
         try {
             const result = JSON.parse(stdout);
             if (!result.ok) return res.status(401).json(result);
