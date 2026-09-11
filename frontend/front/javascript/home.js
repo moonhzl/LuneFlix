@@ -1,4 +1,4 @@
-const API_URL = "/api";
+const API_URL = window.luneflixApiUrl;
 const filmesContainer = document.getElementById("filmesContainer");
 const seriesContainer = document.getElementById("seriesContainer");
 const pesquisaContainer = document.getElementById("pesquisaContainer");
@@ -30,7 +30,7 @@ function saveUser(user) {
 
 async function buscarCatalogo(endpoint, container, renderer, errorText) {
     try {
-        const resposta = await fetch(`${API_URL}/${endpoint}`);
+        const resposta = await fetch(API_URL(`/api/${endpoint}`), { credentials: "include" });
         if (!resposta.ok) throw new Error(`Erro HTTP: ${resposta.status}`);
         const dados = await resposta.json();
         const items = dados.results || [];
@@ -79,7 +79,7 @@ async function pesquisarTMDB(texto) {
     tituloPesquisa.textContent = `Resultados para "${texto}"`;
     pesquisaContainer.innerHTML = '<div class="loading">Pesquisando...</div>';
     try {
-        const resposta = await fetch(`${API_URL}/search?q=${encodeURIComponent(texto)}`);
+        const resposta = await fetch(API_URL(`/api/search?q=${encodeURIComponent(texto)}`), { credentials: "include" });
         const dados = await resposta.json().catch(() => ({}));
         if (!resposta.ok) throw new Error(dados.error || `Erro HTTP: ${resposta.status}`);
         if (requestId === pesquisaRequest) mostrarResultadosPesquisa(dados.results || []);
@@ -151,7 +151,7 @@ async function carregarEpisodios(tmdbId, season) {
     if (!list) return;
     list.textContent = "Carregando episódios...";
     try {
-        const response = await fetch(`/api/series/${tmdbId}/seasons/${season}`);
+        const response = await fetch(API_URL(`/api/series/${tmdbId}/seasons/${season}`), { credentials: "include" });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error);
         list.innerHTML = data.data.episodes.map(episode => `<button type="button" class="episode-item" data-episode="${episode.episode_number}"><strong>E${episode.episode_number} - ${episode.name}</strong><small>${episode.overview || "Sem sinopse."}</small></button>`).join("");
@@ -162,7 +162,7 @@ async function carregarEpisodios(tmdbId, season) {
 async function abrirFilme(item, tipo) {
     const params = new URLSearchParams({ type: tipo === "tv" || tipo === "series" ? "series" : "movie", imdb_id: item.imdb_id || "", tmdb_id: item.tmdb_id || item.id || "" });
     try {
-        const response = await fetch(`/api/player?${params}`);
+        const response = await fetch(API_URL(`/api/player?${params}`), { credentials: "include" });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || "Não foi possível iniciar a reprodução.");
         fecharDetalhes();
@@ -216,7 +216,7 @@ pesquisa.addEventListener("input", pesquisar);
 fecharPlayer.addEventListener("click", fechar);
 document.getElementById("perfilForm").addEventListener("submit", async event => {
     event.preventDefault();
-    const response = await fetch("/api/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: document.getElementById("perfilNome").value.trim(), avatar: document.getElementById("perfilFoto").value.trim() }) });
+    const response = await fetch(API_URL("/api/profile"), { method: "PATCH", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: document.getElementById("perfilNome").value.trim(), avatar: document.getElementById("perfilFoto").value.trim() }) });
     const data = await response.json();
     if (!response.ok) return alert(data.error || "Não foi possível salvar o perfil.");
     saveUser(data.user);
@@ -225,7 +225,7 @@ document.getElementById("perfilForm").addEventListener("submit", async event => 
 });
 document.getElementById("addAccountButton").addEventListener("click", () => { saveCurrentAccount(); window.location.href = "login.html"; });
 document.querySelectorAll("[data-close-detail]").forEach(element => element.addEventListener("click", fecharDetalhes));
-document.getElementById("logoutButton").addEventListener("click", async () => { await fetch("/api/logout", { method: "POST" }); localStorage.removeItem("luneflixUser"); window.location.href = "login.html"; });
+document.getElementById("logoutButton").addEventListener("click", async () => { await fetch(API_URL("/api/logout"), { method: "POST", credentials: "include" }); localStorage.removeItem("luneflixUser"); window.location.href = "login.html"; });
 document.getElementById("contasContainer").addEventListener("click", event => {
     const removeId = event.target.dataset.removeId;
     if (removeId) { localStorage.setItem("luneflixAccounts", JSON.stringify(getAccounts().filter(account => String(account.id) !== String(removeId)))); renderProfile(); return; }
@@ -237,7 +237,7 @@ window.addEventListener("popstate", () => setView(currentView(), false));
 window.addEventListener("hashchange", () => setView(currentView(), false));
 async function initializeHome() {
     try {
-        const response = await fetch("/api/me");
+        const response = await fetch(API_URL("/api/me"), { credentials: "include" });
         if (!response.ok) throw new Error("Sessão expirada");
         const data = await response.json();
         saveUser(data.user);

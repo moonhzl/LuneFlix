@@ -22,8 +22,23 @@ const adminController = path.join(__dirname, "controllers", "adminController.py"
 const adminSessions = new Map();
 const authAttempts = new Map();
 const secureCookie = process.env.NODE_ENV === "production" ? "; Secure" : "";
+const cookieSameSite = process.env.NODE_ENV === "production" ? "None" : "Lax";
+const allowedOrigin = process.env.FRONTEND_URL || "";
 
 app.use(express.json());
+
+app.use((request, response, next) => {
+    const origin = request.headers.origin;
+    if (origin && allowedOrigin && origin !== allowedOrigin) return response.status(403).json({ error: "Origem não autorizada." });
+    if (origin) {
+        response.setHeader("Access-Control-Allow-Origin", origin);
+        response.setHeader("Access-Control-Allow-Credentials", "true");
+        response.setHeader("Access-Control-Allow-Headers", "Content-Type");
+        response.setHeader("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS");
+    }
+    if (request.method === "OPTIONS") return response.sendStatus(204);
+    next();
+});
 
 // O backend não deve expor código, banco ou arquivos de ambiente.
 app.use(express.static(frontendRoot));
@@ -137,7 +152,7 @@ app.post("/api/admin/login", (req, res) => {
             if (!result.ok) return res.status(401).json(result);
             const token = crypto.randomBytes(32).toString("hex");
             adminSessions.set(token, { admin: result.admin, expiresAt: Date.now() + 8 * 60 * 60 * 1000 });
-            res.setHeader("Set-Cookie", `luneflix_admin=${token}; HttpOnly; Path=/; Max-Age=28800; SameSite=Lax`);
+            res.setHeader("Set-Cookie", `luneflix_admin=${token}; HttpOnly; Path=/; Max-Age=28800; SameSite=${cookieSameSite}${secureCookie}`);
             return res.json(result);
         } catch {
             return res.status(500).json({ error: "Resposta inválida do controlador administrativo." });
@@ -149,7 +164,7 @@ app.post("/api/admin/login", (req, res) => {
 app.post("/api/admin/logout", requireAdmin, (req, res) => {
     const token = readCookies(req).luneflix_admin;
     adminSessions.delete(token);
-    res.setHeader("Set-Cookie", "luneflix_admin=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax");
+    res.setHeader("Set-Cookie", `luneflix_admin=; HttpOnly; Path=/; Max-Age=0; SameSite=${cookieSameSite}${secureCookie}`);
     res.json({ ok: true });
 });
 
@@ -212,7 +227,7 @@ app.post("/api/forgot-password", limitAuth, (req, res) => {
         if (code !== 0) return res.status(500).json({ error: "Não foi possível processar a solicitação." });
         try {
             const result = JSON.parse(stdout);
-            if (result.token) console.log(`Link de recuperação (válido por 30 min): http://localhost:${PORT}/front/pages/reset-password.html?token=${result.token}`);
+            if (result.token) console.log(`Link de recuperação (válido por 30 min): ${(process.env.FRONTEND_URL || `http://localhost:${PORT}`).replace(/\/$/, "")}/front/pages/reset-password.html?token=${result.token}`);
             res.json({ ok: true, message: "Se o e-mail existir, enviaremos instruções de recuperação." });
         } catch { res.status(500).json({ error: "Resposta inválida da recuperação." }); }
     });
@@ -230,7 +245,7 @@ app.post("/api/login", limitAuth, (req, res) => {
             const result = JSON.parse(stdout);
             if (!result.ok) return res.status(401).json(result);
             const session = await sessionStore.createSession(result.user);
-            res.setHeader("Set-Cookie", `luneflix_session=${session.token}; HttpOnly; Path=/; Max-Age=${sessionStore.SESSION_TTL / 1000}; SameSite=Lax${secureCookie}`);
+            res.setHeader("Set-Cookie", `luneflix_session=${session.token}; HttpOnly; Path=/; Max-Age=${sessionStore.SESSION_TTL / 1000}; SameSite=${cookieSameSite}${secureCookie}`);
             return res.json(result);
         } catch { return res.status(500).json({ error: "Resposta inválida da autenticação." }); }
     });
@@ -241,7 +256,7 @@ app.patch("/api/profile", requireUser, (req, res) => runAuthController({ action:
 app.post("/api/logout", requireUser, async (req, res) => {
     try {
         await sessionStore.deleteSession(readCookies(req).luneflix_session);
-        res.setHeader("Set-Cookie", `luneflix_session=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax${secureCookie}`);
+        res.setHeader("Set-Cookie", `luneflix_session=; HttpOnly; Path=/; Max-Age=0; SameSite=${cookieSameSite}${secureCookie}`);
         res.json({ ok: true });
     } catch {
         res.status(503).json({ error: "Não foi possível encerrar a sessão." });

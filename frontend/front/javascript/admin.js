@@ -3,7 +3,7 @@ const $ = selector => document.querySelector(selector);
 const content = $('#content');
 
 async function api(url, options = {}) {
-    const response = await fetch(url, { credentials: 'same-origin', ...options, headers: { 'Content-Type': 'application/json', ...(options.headers || {}) } });
+    const response = await fetch(luneflixApiUrl(url), { credentials: 'include', ...options, headers: { 'Content-Type': 'application/json', ...(options.headers || {}) } });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.error || 'Não foi possível concluir a operação.');
     return data;

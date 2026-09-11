@@ -40,9 +40,12 @@ TMDB_API_TOKEN=seu_token_tmdb
 SUPABASE_URL=https://seu-projeto.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=sua_chave_privada
 NODE_ENV=development
+FRONTEND_URL=https://seu-projeto.vercel.app
 ```
 
 `SUPABASE_SERVICE_ROLE_KEY` é uma chave privada. Ela deve existir somente no backend, nunca no frontend ou no repositório.
+
+Em produção, `FRONTEND_URL` deve ser a origem exata da Vercel, sem barra final. No frontend, coloque a URL pública do Railway em `frontend/front/javascript/config.js`. Como o frontend é estático, essa URL é configurada no arquivo antes do deploy.
 
 ## Supabase e sessões
 

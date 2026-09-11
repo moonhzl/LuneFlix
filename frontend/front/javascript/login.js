@@ -45,9 +45,10 @@ loginForm.addEventListener("submit", async (event) => {
     loginButton.disabled = true;
 
     try {
-        const response = await fetch("/api/login", {
+        const response = await fetch(luneflixApiUrl("/api/login"), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
+            credentials: "include",
             body: JSON.stringify({ email, password })
         });
         const data = await response.json();
@@ -78,7 +79,7 @@ document
 
         const email = window.prompt("Digite o e-mail da sua conta:");
         if (!email) return;
-        fetch("/api/forgot-password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) })
+        fetch(luneflixApiUrl("/api/forgot-password"), { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) })
             .then(response => response.json().then(data => ({ response, data })))
             .then(({ response, data }) => alert(response.ok ? "Se o e-mail existir, as instruções foram geradas. Em desenvolvimento, o token aparece no terminal do servidor." : (data.error || "Não foi possível solicitar a recuperação.")))
             .catch(() => alert("Não foi possível solicitar a recuperação."));

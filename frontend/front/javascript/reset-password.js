@@ -9,7 +9,7 @@ form.addEventListener("submit", async event => {
     if (!token) { message.textContent = "Link de recuperação inválido."; return; }
     if (password !== confirmPassword) { message.textContent = "As senhas não são iguais."; return; }
     try {
-        const response = await fetch("/api/reset-password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token, password }) });
+        const response = await fetch(luneflixApiUrl("/api/reset-password"), { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token, password }) });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || "Não foi possível redefinir a senha.");
         message.textContent = "Senha alterada. Você já pode fazer login.";
