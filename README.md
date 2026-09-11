@@ -63,7 +63,7 @@ $env:SUPABASE_SERVICE_ROLE_KEY="sua_chave_privada"
 python back/migrate-sqlite-to-supabase.py
 ```
 
-O script envia usuários, catálogo, pagamentos, cupons, módulos, configurações e logs usando `upsert`. Ele não apaga o SQLite local. Faça um backup antes. A migração das tabelas não troca automaticamente as consultas dos controladores Python; essa adaptação ainda é necessária para o backend deixar de depender do SQLite em produção.
+O script envia usuários, catálogo, pagamentos, cupons, módulos, configurações e logs usando `upsert`. Ele não apaga o SQLite local. Faça um backup antes. Os controladores de produção usam o Supabase; o SQLite é necessário apenas enquanto você mantiver esse script de migração.
 
 ## Funcionalidades
 
@@ -96,7 +96,7 @@ O script envia usuários, catálogo, pagamentos, cupons, módulos, configuraçõ
 
 ## Banco local e catálogo
 
-O banco SQLite fica em `back/database/usuarios.sqlite` e é criado automaticamente. Ele contém usuários, catálogo local e dados administrativos. Arquivos SQLite não devem ser versionados.
+O arquivo SQLite em `back/database/usuarios.sqlite` é apenas um backup local de migração. A aplicação em produção usa exclusivamente o Supabase; arquivos SQLite não devem ser versionados.
 
 Para migrar filmes legados que possuem IMDb ID na URL:
 

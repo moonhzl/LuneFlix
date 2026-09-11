@@ -19,7 +19,6 @@ const projectRoot = path.join(__dirname, "..");
 const frontendRoot = path.join(projectRoot, "frontend");
 const authController = path.join(__dirname, "controllers", "authController.py");
 const adminController = path.join(__dirname, "controllers", "adminController.py");
-const adminSessions = new Map();
 const authAttempts = new Map();
 const secureCookie = process.env.NODE_ENV === "production" ? "; Secure" : "";
 const cookieSameSite = process.env.NODE_ENV === "production" ? "None" : "Lax";
@@ -100,14 +99,17 @@ function runAdminController(payload, res) {
     controller.stdin.end(JSON.stringify(payload));
 }
 
-function requireAdmin(request, response, next) {
+async function requireAdmin(request, response, next) {
     const token = readCookies(request).luneflix_admin;
-    const session = token && adminSessions.get(token);
-    if (!session || session.expiresAt < Date.now() || !["admin", "manager"].includes(session.admin.role)) {
-        return response.status(401).json({ error: "Autenticação administrativa necessária." });
+    try {
+        const session = await sessionStore.getSession(token);
+        if (!session || !["admin", "manager"].includes(session.user.role)) return response.status(401).json({ error: "Autenticação administrativa necessária." });
+        request.admin = session.user;
+        return next();
+    } catch (error) {
+        console.error(error.message);
+        return response.status(503).json({ error: "Serviço de sessão temporariamente indisponível." });
     }
-    request.admin = session.admin;
-    next();
 }
 
 async function requireUser(request, response, next) {
@@ -142,7 +144,7 @@ app.post("/api/admin/login", (req, res) => {
     controller.stdout.on("data", chunk => { stdout += chunk; });
     controller.stderr.on("data", chunk => { stderr += chunk; });
     controller.on("error", () => res.status(500).json({ error: "Python não está disponível." }));
-    controller.on("close", code => {
+    controller.on("close", async code => {
         if (code !== 0) {
             console.error("Login administrativo falhou:", stderr);
             return res.status(500).json({ error: "Não foi possível autenticar o administrador." });
@@ -150,9 +152,8 @@ app.post("/api/admin/login", (req, res) => {
         try {
             const result = JSON.parse(stdout);
             if (!result.ok) return res.status(401).json(result);
-            const token = crypto.randomBytes(32).toString("hex");
-            adminSessions.set(token, { admin: result.admin, expiresAt: Date.now() + 8 * 60 * 60 * 1000 });
-            res.setHeader("Set-Cookie", `luneflix_admin=${token}; HttpOnly; Path=/; Max-Age=28800; SameSite=${cookieSameSite}${secureCookie}`);
+            const session = await sessionStore.createSession(result.admin);
+            res.setHeader("Set-Cookie", `luneflix_admin=${session.token}; HttpOnly; Path=/; Max-Age=${sessionStore.SESSION_TTL / 1000}; SameSite=${cookieSameSite}${secureCookie}`);
             return res.json(result);
         } catch {
             return res.status(500).json({ error: "Resposta inválida do controlador administrativo." });
@@ -161,11 +162,13 @@ app.post("/api/admin/login", (req, res) => {
     controller.stdin.end(JSON.stringify({ action: "login", ...req.body, ip: req.ip }));
 });
 
-app.post("/api/admin/logout", requireAdmin, (req, res) => {
+app.post("/api/admin/logout", requireAdmin, async (req, res) => {
     const token = readCookies(req).luneflix_admin;
-    adminSessions.delete(token);
-    res.setHeader("Set-Cookie", `luneflix_admin=; HttpOnly; Path=/; Max-Age=0; SameSite=${cookieSameSite}${secureCookie}`);
-    res.json({ ok: true });
+    try {
+        await sessionStore.deleteSession(token);
+        res.setHeader("Set-Cookie", `luneflix_admin=; HttpOnly; Path=/; Max-Age=0; SameSite=${cookieSameSite}${secureCookie}`);
+        res.json({ ok: true });
+    } catch { res.status(503).json({ error: "Não foi possível encerrar a sessão." }); }
 });
 
 app.get("/api/admin/me", requireAdmin, (req, res) => res.json({ ok: true, admin: req.admin }));

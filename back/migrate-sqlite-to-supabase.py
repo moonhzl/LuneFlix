@@ -15,7 +15,7 @@ TABLES = [
 JSON_COLUMNS = {"catalog_movies": {"genres"}, "catalog_series": {"genres", "seasons"}}
 
 
-def request_rows(base_url, api_key, table, rows):
+def request_rows(base_url, api_key, table, rows, user_ids=None):
     if not rows:
         print(f"{table}: 0 registros")
         return
@@ -31,7 +31,19 @@ def request_rows(base_url, api_key, table, rows):
             item["featured"] = bool(item.get("featured"))
         if table == "password_reset_tokens":
             item["used"] = bool(item.get("used"))
+        if user_ids is not None:
+            for column in ("user_id", "admin_id", "affected_user_id"):
+                if column in item and item[column] is not None and item[column] not in user_ids:
+                    if table == "payments" and column == "user_id":
+                        item = None
+                        break
+                    item[column] = None
+            if item is None:
+                continue
         payload.append(item)
+    if not payload:
+        print(f"{table}: 0 registros válidos (referências órfãs ignoradas)")
+        return
     body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
     request = urllib.request.Request(
         f"{base_url}/rest/v1/{table}",
@@ -51,7 +63,9 @@ def request_rows(base_url, api_key, table, rows):
     except urllib.error.HTTPError as error:
         detail = error.read().decode("utf-8", errors="replace")
         raise RuntimeError(f"{table}: HTTP {error.code}: {detail}") from error
-    print(f"{table}: {len(rows)} registros enviados")
+    skipped = len(rows) - len(payload)
+    suffix = f", {skipped} ignorados" if skipped else ""
+    print(f"{table}: {len(payload)} registros enviados{suffix}")
 
 
 def main():
@@ -65,9 +79,10 @@ def main():
     connection = sqlite3.connect(DATABASE_PATH)
     connection.row_factory = sqlite3.Row
     try:
+        user_ids = {row[0] for row in connection.execute("SELECT id FROM users")}
         for table in TABLES:
             rows = connection.execute(f'SELECT * FROM "{table}"').fetchall()
-            request_rows(base_url, api_key, table, rows)
+            request_rows(base_url, api_key, table, rows, user_ids)
     finally:
         connection.close()
 
