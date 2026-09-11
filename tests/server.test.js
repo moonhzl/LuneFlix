@@ -97,3 +97,39 @@ test("a busca prioriza o título mais relevante para a query", async () => {
         catalogService.externalFetch = originalExternalFetch;
     }
 });
+
+test("a busca encontra títulos sem acento, com pontuação diferente e com pequeno erro", async () => {
+    const catalogService = require("../back/services/catalogService");
+    const originalRunCatalog = catalogService.runCatalog;
+    const originalExternalFetch = catalogService.externalFetch;
+
+    catalogService.runCatalog = async payload => {
+        if (payload.action === "search") return { ok: true, data: [] };
+        if (payload.action === "upsert") return { ok: true, data: { ...payload.item, id: String(payload.item.tmdb_id) } };
+        throw new Error(`Ação inesperada: ${payload.action}`);
+    };
+    catalogService.externalFetch = async endpoint => {
+        if (endpoint.includes("query=homem%20aranha")) return { results: [
+            { id: 1, media_type: "movie", title: "Homem-Aranha: Sem Volta para Casa", vote_average: 8.2 },
+            { id: 2, media_type: "movie", title: "O Homem de Ferro", vote_average: 9.5 }
+        ] };
+        if (endpoint.includes("query=interstelar")) return { results: [] };
+        if (endpoint.includes("query=inter")) return { results: [
+            { id: 3, media_type: "movie", title: "Interestelar", original_title: "Interstellar", vote_average: 8.7 }
+        ] };
+        if (endpoint.includes("/movie/1")) return { id: 1, title: "Homem-Aranha: Sem Volta para Casa", imdb_id: "tt1", vote_average: 8.2, genres: [] };
+        if (endpoint.includes("/movie/2")) return { id: 2, title: "O Homem de Ferro", imdb_id: "tt2", vote_average: 9.5, genres: [] };
+        if (endpoint.includes("/movie/3")) return { id: 3, title: "Interestelar", original_title: "Interstellar", imdb_id: "tt3", vote_average: 8.7, genres: [] };
+        return { results: [] };
+    };
+
+    try {
+        const spider = await catalogService.search("homem aranha");
+        const typo = await catalogService.search("interstelar");
+        assert.equal(spider[0].title, "Homem-Aranha: Sem Volta para Casa");
+        assert.equal(typo[0].title, "Interestelar");
+    } finally {
+        catalogService.runCatalog = originalRunCatalog;
+        catalogService.externalFetch = originalExternalFetch;
+    }
+});

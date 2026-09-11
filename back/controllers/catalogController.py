@@ -1,4 +1,5 @@
 import json
+import re
 import sys
 import unicodedata
 from datetime import datetime, timezone
@@ -26,7 +27,31 @@ def decode(row, content_type):
 
 def normalize_search_text(value):
 	text = unicodedata.normalize("NFKD", str(value or ""))
-	return "".join(c for c in text if not unicodedata.combining(c)).lower().strip()
+	text = "".join(c for c in text if not unicodedata.combining(c)).lower()
+	return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9]+", " ", text)).strip()
+
+GENERIC_SEARCH_WORDS = {"a", "as", "o", "os", "de", "da", "do", "das", "dos", "e", "em", "no", "na", "um", "uma", "the", "of", "and", "in"}
+
+def query_tokens(query):
+	tokens = [token for token in normalize_search_text(query).split() if token]
+	meaningful = [token for token in tokens if token not in GENERIC_SEARCH_WORDS]
+	return meaningful or tokens
+
+def field_score(query, tokens, field):
+	if not field: return 0.0
+	words = field.split()
+	exact = sum(token in words for token in tokens)
+	contained = sum(token in field for token in tokens)
+	fuzzy = sum(any(SequenceMatcher(None, token, word).ratio() >= (.8 if len(token) <= 4 else .72) for word in words) for token in tokens)
+	score = 0.0
+	if field == query: score += 1.0
+	elif field.startswith(query): score += .8
+	elif query in field: score += .68
+	if exact == len(tokens): score += .6
+	elif contained: score += contained / len(tokens) * .48
+	if fuzzy == len(tokens) and not exact: score += .35
+	elif fuzzy: score += fuzzy / len(tokens) * .2
+	return score
 
 def list_items(content_type=None):
 	if content_type:
@@ -38,22 +63,12 @@ def list_items(content_type=None):
 
 def search_score(query, item):
 	query = normalize_search_text(query)
+	tokens = query_tokens(query)
 	title = normalize_search_text(item.get("title") or "")
 	original = normalize_search_text(item.get("original_title") or "")
-	base = max(SequenceMatcher(None, query, title).ratio(), SequenceMatcher(None, query, original).ratio())
-	if not query:
+	if not query or not tokens:
 		return 0.0
-	if title == query or original == query:
-		return 1.0 + base
-	if title.startswith(query) or original.startswith(query):
-		return 0.85 + base
-	if query in title or query in original:
-		return 0.7 + base
-	query_tokens = [token for token in query.split() if token]
-	if query_tokens:
-		matches = sum(1 for token in query_tokens if token in title or token in original)
-		return (matches / max(len(query_tokens), 1)) * 0.5 + base
-	return base
+	return max(field_score(query, tokens, title), field_score(query, tokens, original) * .82)
 
 def local_search(query):
 	query = normalize_search_text(query)

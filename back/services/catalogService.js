@@ -79,38 +79,61 @@ function normalizeExternal(item, details) {
     };
 }
 
+const GENERIC_SEARCH_WORDS = new Set(["a", "as", "o", "os", "de", "da", "do", "das", "dos", "e", "em", "no", "na", "um", "uma", "the", "of", "and", "in"]);
+
 function normalizeSearchText(value) {
     return String(value || "")
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "")
         .toLowerCase()
-        .trim();
+        .replace(/[^a-z0-9]+/g, " ")
+        .trim()
+        .replace(/\s+/g, " ");
+}
+
+function queryTokens(query) {
+    const tokens = normalizeSearchText(query).split(" ").filter(Boolean);
+    const meaningful = tokens.filter(token => !GENERIC_SEARCH_WORDS.has(token));
+    return meaningful.length ? meaningful : tokens;
+}
+
+function tokenSimilarity(a, b) {
+    if (!a || !b) return 0;
+    if (a === b) return 1;
+    if (a.startsWith(b) || b.startsWith(a)) return Math.min(a.length, b.length) / Math.max(a.length, b.length);
+    return 1 - levenshteinDistance(a, b) / Math.max(a.length, b.length);
+}
+
+function fieldScore(tokens, normalizedQuery, field, weight) {
+    if (!field) return 0;
+    const fieldTokens = field.split(" ").filter(Boolean);
+    const exactMatches = tokens.filter(token => fieldTokens.includes(token)).length;
+    const containedMatches = tokens.filter(token => field.includes(token)).length;
+    const fuzzyMatches = tokens.filter(token => fieldTokens.some(candidate => tokenSimilarity(token, candidate) >= (token.length <= 4 ? 0.8 : 0.72))).length;
+    let score = 0;
+
+    if (field === normalizedQuery) score += 100;
+    else if (field.startsWith(normalizedQuery)) score += 80;
+    else if (field.includes(normalizedQuery)) score += 68;
+    if (exactMatches === tokens.length) score += 60;
+    else if (containedMatches) score += (containedMatches / tokens.length) * 48;
+    if (fuzzyMatches === tokens.length && !exactMatches) score += 35;
+    else if (fuzzyMatches) score += (fuzzyMatches / tokens.length) * 20;
+    return score * weight;
 }
 
 function scoreSearchRelevance(query, item) {
     const normalizedQuery = normalizeSearchText(query);
-    if (!normalizedQuery) return 0;
+    const tokens = queryTokens(query);
+    if (!normalizedQuery || !tokens.length) return 0;
     const title = normalizeSearchText(item.title || item.name || "");
     const originalTitle = normalizeSearchText(item.original_title || item.original_name || "");
-    const haystacks = [title, originalTitle];
-    let score = 0;
-
-    if (haystacks.some(value => value === normalizedQuery)) score += 100;
-    if (haystacks.some(value => value.startsWith(normalizedQuery))) score += 30;
-    if (haystacks.some(value => value.includes(normalizedQuery))) score += 20;
-
-    const queryTokens = normalizedQuery.split(/\s+/).filter(Boolean);
-    if (queryTokens.length) {
-        const matchingTokens = queryTokens.filter(token => haystacks.some(value => value.includes(token))).length;
-        score += (matchingTokens / queryTokens.length) * 25;
-    }
-
-    const similarity = Math.max(
-        ...haystacks.map(value => value ? (1 - levenshteinDistance(normalizedQuery, value) / Math.max(normalizedQuery.length, value.length, 1)) : 0)
-    );
-    score += similarity * 15;
-    score += Number(item.rating || item.vote_average || 0) * 0.3;
-    return score;
+    const keywords = (item.search_keywords || item.keywords || []).map(normalizeSearchText).filter(Boolean).join(" ");
+    const titleScore = fieldScore(tokens, normalizedQuery, title, 1);
+    const originalScore = fieldScore(tokens, normalizedQuery, originalTitle, 0.82);
+    const keywordScore = fieldScore(tokens, normalizedQuery, keywords, 0.35);
+    const score = Math.max(titleScore, originalScore, keywordScore);
+    return score + Math.min(Number(item.rating || item.vote_average || 0), 10) * 0.1;
 }
 
 function levenshteinDistance(a, b) {
@@ -148,36 +171,88 @@ async function withRateLimit(key, operation) {
     return operation();
 }
 
+async function mapWithConcurrency(items, limit, mapper) {
+    const results = [];
+    let next = 0;
+    await Promise.all(Array.from({ length: Math.min(limit, items.length) }, async () => {
+        while (next < items.length) {
+            const index = next++;
+            results[index] = await mapper(items[index]);
+        }
+    }));
+    return results;
+}
+
+function searchVariants(query) {
+    const normalized = normalizeSearchText(query);
+    const tokens = queryTokens(query);
+    const longest = [...tokens].sort((a, b) => b.length - a.length)[0];
+    // A curta consulta de prefixo só é usada como fallback para erros pequenos como
+    // "interstelar"; ela evita transformar cada pesquisa em várias requisições.
+    const prefix = longest && longest.length >= 6 ? longest.slice(0, Math.min(5, longest.length - 1)) : null;
+    return { normalized, fallback: prefix && prefix !== normalized ? prefix : null };
+}
+
+function tmdbDetailsEndpoint(item) {
+    const resource = item.media_type === "movie" ? "movie" : "tv";
+    return `/${resource}/${item.id}?language=pt-BR&append_to_response=external_ids,keywords`;
+}
+
+function externalKeywordNames(details) {
+    const values = details?.keywords?.keywords || details?.keywords?.results || [];
+    return values.map(keyword => keyword.name).filter(Boolean);
+}
+
 async function search(query, clientKey = "anonymous") {
     const local = await module.exports.runCatalog({ action: "search", query });
-    const cacheKey = query.trim().toLowerCase();
+    const { normalized, fallback } = searchVariants(query);
+    const cacheKey = normalized;
     const request = externalRequests.get(cacheKey) || withRateLimit(clientKey, async () => {
-        const pages = await Promise.all([1, 2].map(page => module.exports.externalFetch(`/search/multi?query=${encodeURIComponent(query)}&language=pt-BR&page=${page}&include_adult=false`)));
-        const candidates = pages.flatMap(result => result.results || [])
+        let searchResponses;
+        if (/^tt\d+$/i.test(query.trim())) {
+            const found = await module.exports.externalFetch(`/find/${encodeURIComponent(query.trim())}?external_source=imdb_id&language=pt-BR`);
+            searchResponses = [{ results: [...(found.movie_results || []).map(item => ({ ...item, media_type: "movie" })), ...(found.tv_results || []).map(item => ({ ...item, media_type: "tv" }))] }];
+        } else {
+            const firstPage = await module.exports.externalFetch(`/search/multi?query=${encodeURIComponent(query)}&language=pt-BR&page=1&include_adult=false`);
+            const firstCandidates = (firstPage.results || []).filter(item => item.media_type === "movie" || item.media_type === "tv");
+            const shouldFetchMore = firstCandidates.length < 12 || !firstCandidates.some(item => scoreSearchRelevance(query, item) >= 45);
+            const extraPages = shouldFetchMore
+                ? await Promise.all([
+                    module.exports.externalFetch(`/search/multi?query=${encodeURIComponent(query)}&language=pt-BR&page=2&include_adult=false`),
+                    fallback ? module.exports.externalFetch(`/search/multi?query=${encodeURIComponent(fallback)}&language=pt-BR&page=1&include_adult=false`) : Promise.resolve({ results: [] })
+                ])
+                : [];
+            searchResponses = [firstPage, ...extraPages];
+        }
+        const candidates = searchResponses.flatMap(result => result.results || [])
             .filter(item => item.media_type === "movie" || item.media_type === "tv")
             .filter((item, index, items) => items.findIndex(candidate => `${candidate.media_type}:${candidate.id}` === `${item.media_type}:${item.id}`) === index)
-            .slice(0, 40);
-        const normalized = [];
-        for (const item of candidates) {
-            const endpoint = item.media_type === "movie" ? `/movie/${item.id}?language=pt-BR&append_to_response=external_ids` : `/tv/${item.id}?language=pt-BR&append_to_response=external_ids`;
-            const details = await module.exports.externalFetch(endpoint);
+            .sort((a, b) => scoreSearchRelevance(query, b) - scoreSearchRelevance(query, a))
+            .slice(0, 12);
+        return mapWithConcurrency(candidates, 4, async item => {
+            const details = await module.exports.externalFetch(tmdbDetailsEndpoint(item));
             const normalizedItem = normalizeExternal(item, details);
-            if ((normalizedItem.type === "movie" && normalizedItem.imdb_id) || normalizedItem.type === "series") {
-                normalized.push(await module.exports.runCatalog({ action: "upsert", item: normalizedItem }).then(response => response.data));
-            }
-        }
-        return normalized;
+            if (!((normalizedItem.type === "movie" && normalizedItem.imdb_id) || normalizedItem.type === "series")) return null;
+            const saved = (await module.exports.runCatalog({ action: "upsert", item: normalizedItem })).data;
+            return { ...saved, search_keywords: externalKeywordNames(details) };
+        });
     });
     if (!externalRequests.has(cacheKey)) externalRequests.set(cacheKey, request);
     try {
-        const external = (await request).map(publicItem);
+        const external = (await request).filter(Boolean).map(publicItem);
         const combined = [...external, ...local.data.map(publicItem)];
         const unique = new Map();
         combined.forEach(item => {
             const key = item.imdb_id || `${item.media_type}:${item.tmdb_id}`;
             if (!unique.has(key)) unique.set(key, item);
         });
-        return [...unique.values()].sort((a, b) => scoreSearchRelevance(query, b) - scoreSearchRelevance(query, a));
+        const isImdbSearch = /^tt\d+$/i.test(query.trim());
+        return [...unique.values()]
+            .map(item => ({ item, score: scoreSearchRelevance(query, item) }))
+            .filter(({ score }) => isImdbSearch || score >= 18)
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 20)
+            .map(({ item }) => { delete item.search_keywords; return item; });
     } catch (error) {
         if (local.data.length) return local.data.map(publicItem);
         throw error;
