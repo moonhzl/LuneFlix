@@ -61,7 +61,7 @@ function runAuthController(payload, res) {
     controller.stderr.on("data", chunk => { stderr += chunk; });
     controller.on("error", error => {
         console.error("Erro na autenticação:", error);
-        res.status(500).json({ erro: "Python não está disponível para a autenticação." });
+        res.status(500).json({ erro: `Python não está disponível (${pythonCommand}).` });
     });
     controller.on("close", async code => {
         if (code !== 0) {
@@ -86,7 +86,7 @@ function runAdminController(payload, res) {
     let stderr = "";
     controller.stdout.on("data", chunk => { stdout += chunk; });
     controller.stderr.on("data", chunk => { stderr += chunk; });
-    controller.on("error", () => res.status(500).json({ error: "Python não está disponível." }));
+    controller.on("error", () => res.status(500).json({ error: `Python não está disponível (${pythonCommand}).` }));
     controller.on("close", code => {
         if (code !== 0) {
             console.error("Controlador administrativo falhou:", stderr);
@@ -146,7 +146,7 @@ app.post("/api/admin/login", (req, res) => {
     let stderr = "";
     controller.stdout.on("data", chunk => { stdout += chunk; });
     controller.stderr.on("data", chunk => { stderr += chunk; });
-    controller.on("error", () => res.status(500).json({ error: "Python não está disponível." }));
+    controller.on("error", () => res.status(500).json({ error: `Python não está disponível (${pythonCommand}).` }));
     controller.on("close", async code => {
         if (code !== 0) {
             console.error("Login administrativo falhou:", stderr);
@@ -244,7 +244,7 @@ app.post("/api/login", limitAuth, (req, res) => {
     const controller = spawn(pythonCommand, [authController]);
     let stdout = "";
     controller.stdout.on("data", chunk => { stdout += chunk; });
-    controller.on("error", () => res.status(500).json({ error: "Python não está disponível." }));
+    controller.on("error", () => res.status(500).json({ error: `Python não está disponível (${pythonCommand}).` }));
     controller.on("close", async code => {
         if (code !== 0) return res.status(500).json({ error: "Não foi possível autenticar." });
         try {
