@@ -23,6 +23,7 @@ const authAttempts = new Map();
 const secureCookie = process.env.NODE_ENV === "production" ? "; Secure" : "";
 const cookieSameSite = process.env.NODE_ENV === "production" ? "None" : "Lax";
 const configuredOrigins = (process.env.FRONTEND_URL || "").split(",").map(origin => origin.trim().replace(/\/$/, "")).filter(Boolean);
+const pythonCommand = process.env.PYTHON_BIN || (process.platform === "win32" ? "python" : "python3");
 
 app.use(express.json());
 
@@ -52,7 +53,7 @@ function readCookies(request) {
 }
 
 function runAuthController(payload, res) {
-    const controller = spawn("python", [authController]);
+    const controller = spawn(pythonCommand, [authController]);
     let stdout = "";
     let stderr = "";
 
@@ -80,7 +81,7 @@ function runAuthController(payload, res) {
 }
 
 function runAdminController(payload, res) {
-    const controller = spawn("python", [adminController]);
+    const controller = spawn(pythonCommand, [adminController]);
     let stdout = "";
     let stderr = "";
     controller.stdout.on("data", chunk => { stdout += chunk; });
@@ -140,7 +141,7 @@ function limitAuth(request, response, next) {
 app.get("/admin", (req, res) => res.sendFile(path.join(frontendRoot, "front", "pages", "admin.html")));
 
 app.post("/api/admin/login", (req, res) => {
-    const controller = spawn("python", [adminController]);
+    const controller = spawn(pythonCommand, [adminController]);
     let stdout = "";
     let stderr = "";
     controller.stdout.on("data", chunk => { stdout += chunk; });
@@ -225,7 +226,7 @@ app.get("/api/admin/catalog/logs", async (req, res) => {
 
 app.post("/api/register", limitAuth, (req, res) => runAuthController({ action: "register", ...req.body }, res));
 app.post("/api/forgot-password", limitAuth, (req, res) => {
-    const controller = spawn("python", [authController]);
+    const controller = spawn(pythonCommand, [authController]);
     let stdout = "";
     controller.stdout.on("data", chunk => { stdout += chunk; });
     controller.on("close", code => {
@@ -240,7 +241,7 @@ app.post("/api/forgot-password", limitAuth, (req, res) => {
 });
 app.post("/api/reset-password", limitAuth, (req, res) => runAuthController({ action: "reset_password", ...req.body }, res));
 app.post("/api/login", limitAuth, (req, res) => {
-    const controller = spawn("python", [authController]);
+    const controller = spawn(pythonCommand, [authController]);
     let stdout = "";
     controller.stdout.on("data", chunk => { stdout += chunk; });
     controller.on("error", () => res.status(500).json({ error: "Python não está disponível." }));
