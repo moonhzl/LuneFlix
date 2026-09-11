@@ -22,14 +22,16 @@ const adminController = path.join(__dirname, "controllers", "adminController.py"
 const authAttempts = new Map();
 const secureCookie = process.env.NODE_ENV === "production" ? "; Secure" : "";
 const cookieSameSite = process.env.NODE_ENV === "production" ? "None" : "Lax";
-const allowedOrigin = process.env.FRONTEND_URL || "";
+const configuredOrigins = (process.env.FRONTEND_URL || "").split(",").map(origin => origin.trim().replace(/\/$/, "")).filter(Boolean);
 
 app.use(express.json());
 
 app.use((request, response, next) => {
     const origin = request.headers.origin;
-    if (origin && allowedOrigin && origin !== allowedOrigin) return response.status(403).json({ error: "Origem não autorizada." });
-    if (origin) {
+    const requestOrigin = `${request.protocol}://${request.get("host")}`;
+    const originAllowed = !origin || origin === requestOrigin || configuredOrigins.includes(origin.replace(/\/$/, ""));
+    if (!originAllowed) return response.status(403).json({ error: "Origem não autorizada." });
+    if (origin && originAllowed) {
         response.setHeader("Access-Control-Allow-Origin", origin);
         response.setHeader("Access-Control-Allow-Credentials", "true");
         response.setHeader("Access-Control-Allow-Headers", "Content-Type");
