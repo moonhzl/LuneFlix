@@ -3,7 +3,8 @@
     "version": "1.0.0",
     "main": "back/server.js",
     "scripts": {
-        "start": "node back/server.js"
+        "start": "node back/server.js",
+        "test": "node --test tests/server.test.js"
     },
     "dependencies": {
         "dotenv": "^17.0.0",

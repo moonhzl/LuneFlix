@@ -1,6 +1,8 @@
 import json
 import re
 import sys
+import unicodedata
+from difflib import SequenceMatcher
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -80,12 +82,40 @@ def table_for(content_type):
 	raise ValueError("Tipo de conteúdo inválido.")
 
 
+def normalize_search_text(value):
+	text = unicodedata.normalize("NFKD", str(value or ""))
+	text = "".join(character for character in text if not unicodedata.combining(character))
+	return re.sub(r"[^a-z0-9]+", " ", text.lower()).strip()
+
+
 def local_search(query):
-	term = f"%{query.strip()}%"
+	normalized_query = normalize_search_text(query)
+	if not normalized_query:
+		return []
+	query_tokens = normalized_query.split()
 	with get_connection() as connection:
-		movies = [decode(row, "movie") for row in connection.execute("SELECT * FROM catalog_movies WHERE title LIKE ? OR original_title LIKE ? ORDER BY title LIMIT 20", (term, term))]
-		series = [decode(row, "series") for row in connection.execute("SELECT * FROM catalog_series WHERE title LIKE ? OR original_title LIKE ? ORDER BY title LIMIT 20", (term, term))]
-	return movies + series
+		movies = [decode(row, "movie") for row in connection.execute("SELECT * FROM catalog_movies")]
+		series = [decode(row, "series") for row in connection.execute("SELECT * FROM catalog_series")]
+
+	def rank(item):
+		candidate_titles = [item.get("title"), item.get("original_title")]
+		best_score = 0
+		for candidate in candidate_titles:
+			normalized_title = normalize_search_text(candidate)
+			if not normalized_title:
+				continue
+			title_tokens = normalized_title.split()
+			token_score = sum(
+				1 for token in query_tokens
+				if any(token in title_token or title_token in token for title_token in title_tokens)
+			)
+			partial_score = SequenceMatcher(None, normalized_query, normalized_title).ratio()
+			contains_score = 1 if normalized_query in normalized_title else 0
+			best_score = max(best_score, contains_score * 3 + token_score + partial_score)
+		return best_score
+
+	results = [(rank(item), item) for item in movies + series]
+	return [item for score, item in sorted(results, key=lambda result: result[0], reverse=True) if score >= 1.5][:20]
 
 
 def list_items(content_type=None):

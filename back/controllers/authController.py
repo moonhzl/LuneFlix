@@ -4,7 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from models.user import authenticate_user, create_user, initialize_database
+from models.user import authenticate_user, create_password_reset, create_user, get_user, initialize_database, reset_password, update_profile
 
 
 def handle_request(request):
@@ -20,6 +20,21 @@ def handle_request(request):
 		if user is None:
 			return {"ok": False, "error": "E-mail ou senha inválidos."}
 		return {"ok": True, "user": user}
+
+	if action == "profile":
+		user = get_user(request["user_id"])
+		return {"ok": bool(user), "user": user, "error": None if user else "Usuário não encontrado."}
+
+	if action == "update_profile":
+		return {"ok": True, "user": update_profile(request["user_id"], request.get("name"), request.get("avatar"))}
+
+	if action == "forgot_password":
+		token = create_password_reset(request.get("email"))
+		return {"ok": True, "token": token}
+
+	if action == "reset_password":
+		reset_password(request.get("token"), request.get("password"))
+		return {"ok": True}
 
 	return {"ok": False, "error": "Operação inválida."}
 

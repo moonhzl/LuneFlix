@@ -99,12 +99,13 @@ async function withRateLimit(key, operation) {
 
 async function search(query, clientKey = "anonymous") {
     const local = await runCatalog({ action: "search", query });
-    if (local.data.length) return local.data.map(publicItem);
     const cacheKey = query.trim().toLowerCase();
-    if (externalRequests.has(cacheKey)) return (await externalRequests.get(cacheKey)).map(publicItem);
-    const request = withRateLimit(clientKey, async () => {
-        const result = await externalFetch(`/search/multi?query=${encodeURIComponent(query)}&language=pt-BR&page=1&include_adult=false`);
-        const candidates = (result.results || []).filter(item => item.media_type === "movie" || item.media_type === "tv").slice(0, 10);
+    const request = externalRequests.get(cacheKey) || withRateLimit(clientKey, async () => {
+        const pages = await Promise.all([1, 2].map(page => externalFetch(`/search/multi?query=${encodeURIComponent(query)}&language=pt-BR&page=${page}&include_adult=false`)));
+        const candidates = pages.flatMap(result => result.results || [])
+            .filter(item => item.media_type === "movie" || item.media_type === "tv")
+            .filter((item, index, items) => items.findIndex(candidate => `${candidate.media_type}:${candidate.id}` === `${item.media_type}:${item.id}`) === index)
+            .slice(0, 40);
         const normalized = [];
         for (const item of candidates) {
             const endpoint = item.media_type === "movie" ? `/movie/${item.id}?language=pt-BR&append_to_response=external_ids` : `/tv/${item.id}?language=pt-BR&append_to_response=external_ids`;
@@ -116,8 +117,22 @@ async function search(query, clientKey = "anonymous") {
         }
         return normalized;
     });
-    externalRequests.set(cacheKey, request);
-    try { return (await request).map(publicItem); } finally { externalRequests.delete(cacheKey); }
+    if (!externalRequests.has(cacheKey)) externalRequests.set(cacheKey, request);
+    try {
+        const external = (await request).map(publicItem);
+        const combined = [...external, ...local.data.map(publicItem)];
+        const unique = new Map();
+        combined.forEach(item => {
+            const key = item.imdb_id || `${item.media_type}:${item.tmdb_id}`;
+            if (!unique.has(key)) unique.set(key, item);
+        });
+        return [...unique.values()];
+    } catch (error) {
+        if (local.data.length) return local.data.map(publicItem);
+        throw error;
+    } finally {
+        if (externalRequests.get(cacheKey) === request) externalRequests.delete(cacheKey);
+    }
 }
 
 async function list(type) {
@@ -125,9 +140,15 @@ async function list(type) {
     return result.data.map(publicItem);
 }
 
+async function getSeason(tmdbId, season) {
+    if (!/^\d+$/.test(String(tmdbId)) || !/^\d+$/.test(String(season))) throw new Error("Temporada inválida.");
+    const data = await externalFetch(`/tv/${tmdbId}/season/${Number(season)}?language=pt-BR`);
+    return { season_number: data.season_number, episodes: (data.episodes || []).map(episode => ({ episode_number: episode.episode_number, name: episode.name, overview: episode.overview, still_path: episode.still_path, air_date: episode.air_date })) };
+}
+
 async function save(item) {
     const result = await runCatalog({ action: "upsert", item });
     return publicItem(result.data);
 }
 
-module.exports = { list, playerUrl, runCatalog, save, search, normalizeExternal, externalFetch };
+module.exports = { list, playerUrl, runCatalog, save, search, normalizeExternal, externalFetch, getSeason };

@@ -4,6 +4,7 @@ require("dotenv").config({
 
 const express = require("express");
 const path = require("path");
+const fs = require("fs");
 const { spawn } = require("child_process");
 const crypto = require("crypto");
 const catalogService = require("./services/catalogService");
@@ -18,6 +19,24 @@ const projectRoot = path.join(__dirname, "..");
 const authController = path.join(__dirname, "controllers", "authController.py");
 const adminController = path.join(__dirname, "controllers", "adminController.py");
 const adminSessions = new Map();
+const sessionFile = path.join(__dirname, "database", "sessions.json");
+const userSessions = new Map();
+const SESSION_TTL = 7 * 24 * 60 * 60 * 1000;
+const authAttempts = new Map();
+const secureCookie = process.env.NODE_ENV === "production" ? "; Secure" : "";
+
+function sessionKey(token) { return crypto.createHash("sha256").update(token).digest("hex"); }
+function loadSessions() {
+    try {
+        const sessions = JSON.parse(fs.readFileSync(sessionFile, "utf8"));
+        Object.entries(sessions).forEach(([key, session]) => { if (session.expiresAt > Date.now()) userSessions.set(key, session); });
+    } catch { /* arquivo ainda não existe */ }
+}
+function saveSessions() {
+    fs.mkdirSync(path.dirname(sessionFile), { recursive: true });
+    fs.writeFileSync(sessionFile, JSON.stringify(Object.fromEntries(userSessions)), "utf8");
+}
+loadSessions();
 
 app.use(express.json());
 
@@ -88,6 +107,27 @@ function requireAdmin(request, response, next) {
         return response.status(401).json({ error: "Autenticação administrativa necessária." });
     }
     request.admin = session.admin;
+    next();
+}
+
+function requireUser(request, response, next) {
+    const token = readCookies(request).luneflix_session;
+    const session = token && userSessions.get(sessionKey(token));
+    if (!session || session.expiresAt < Date.now()) {
+        if (token) { userSessions.delete(sessionKey(token)); saveSessions(); }
+        return response.status(401).json({ error: "Autenticação necessária." });
+    }
+    request.user = session.user;
+    next();
+}
+
+function limitAuth(request, response, next) {
+    const key = request.ip || "unknown";
+    const now = Date.now();
+    const attempts = (authAttempts.get(key) || []).filter(timestamp => timestamp > now - 15 * 60 * 1000);
+    if (attempts.length >= 20) return response.status(429).json({ error: "Muitas tentativas. Aguarde alguns minutos." });
+    attempts.push(now);
+    authAttempts.set(key, attempts);
     next();
 }
 
@@ -176,8 +216,49 @@ app.get("/api/admin/catalog/logs", async (req, res) => {
     catch (error) { res.status(500).json({ ok: false, error: error.message }); }
 });
 
-app.post("/api/register", (req, res) => runAuthController({ action: "register", ...req.body }, res));
-app.post("/api/login", (req, res) => runAuthController({ action: "login", ...req.body, ip: req.ip }, res));
+app.post("/api/register", limitAuth, (req, res) => runAuthController({ action: "register", ...req.body }, res));
+app.post("/api/forgot-password", limitAuth, (req, res) => {
+    const controller = spawn("python", [authController]);
+    let stdout = "";
+    controller.stdout.on("data", chunk => { stdout += chunk; });
+    controller.on("close", code => {
+        if (code !== 0) return res.status(500).json({ error: "Não foi possível processar a solicitação." });
+        try {
+            const result = JSON.parse(stdout);
+            if (result.token) console.log(`Link de recuperação (válido por 30 min): http://localhost:${PORT}/front/pages/reset-password.html?token=${result.token}`);
+            res.json({ ok: true, message: "Se o e-mail existir, enviaremos instruções de recuperação." });
+        } catch { res.status(500).json({ error: "Resposta inválida da recuperação." }); }
+    });
+    controller.stdin.end(JSON.stringify({ action: "forgot_password", email: req.body.email }));
+});
+app.post("/api/reset-password", limitAuth, (req, res) => runAuthController({ action: "reset_password", ...req.body }, res));
+app.post("/api/login", limitAuth, (req, res) => {
+    const controller = spawn("python", [authController]);
+    let stdout = "";
+    controller.stdout.on("data", chunk => { stdout += chunk; });
+    controller.on("error", () => res.status(500).json({ error: "Python não está disponível." }));
+    controller.on("close", code => {
+        if (code !== 0) return res.status(500).json({ error: "Não foi possível autenticar." });
+        try {
+            const result = JSON.parse(stdout);
+            if (!result.ok) return res.status(401).json(result);
+            const token = crypto.randomBytes(32).toString("hex");
+            userSessions.set(sessionKey(token), { user: result.user, expiresAt: Date.now() + SESSION_TTL });
+            saveSessions();
+            res.setHeader("Set-Cookie", `luneflix_session=${token}; HttpOnly; Path=/; Max-Age=${SESSION_TTL / 1000}; SameSite=Lax${secureCookie}`);
+            return res.json(result);
+        } catch { return res.status(500).json({ error: "Resposta inválida da autenticação." }); }
+    });
+    controller.stdin.end(JSON.stringify({ action: "login", ...req.body, ip: req.ip }));
+});
+app.get("/api/me", requireUser, (req, res) => res.json({ ok: true, user: req.user }));
+app.patch("/api/profile", requireUser, (req, res) => runAuthController({ action: "update_profile", user_id: req.user.id, ...req.body }, res));
+app.post("/api/logout", requireUser, (req, res) => {
+    userSessions.delete(sessionKey(readCookies(req).luneflix_session));
+    saveSessions();
+    res.setHeader("Set-Cookie", "luneflix_session=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax");
+    res.json({ ok: true });
+});
 
 async function catalogResponse(type) {
     const local = await catalogService.list(type);
@@ -208,11 +289,18 @@ app.get("/api/search", async (req, res) => {
     try { res.json({ page: 1, results: await catalogService.search(query, req.ip), total_results: 1 }); }
     catch (error) { await catalogService.runCatalog({ action: "log", type: "API_ERROR", details: error.message, ip: req.ip }); res.status(503).json({ error: "A pesquisa externa está temporariamente indisponível." }); }
 });
-app.get("/api/pesquisa", (req, res) => {
-    req.query.q = req.query.query;
-    return app._router.handle(req, res, () => {});
+app.get("/api/pesquisa", async (req, res) => {
+    const query = String(req.query.query || req.query.q || "").trim();
+    if (!query) return res.status(400).json({ error: "Informe uma pesquisa." });
+    try { res.json({ page: 1, results: await catalogService.search(query, req.ip), total_results: 1 }); }
+    catch (error) { res.status(503).json({ error: "A pesquisa externa está temporariamente indisponível." }); }
 });
-app.get("/api/player", (req, res) => {
+app.get("/api/series/:tmdbId/seasons/:season", requireUser, async (req, res) => {
+    try { res.json({ ok: true, data: await catalogService.getSeason(req.params.tmdbId, req.params.season) }); }
+    catch (error) { res.status(400).json({ ok: false, error: error.message }); }
+});
+app.get("/api/player", requireUser, (req, res) => {
+    if (req.user.plan === "free") return res.status(403).json({ error: "Escolha um plano para assistir ao conteúdo." });
     const type = req.query.type === "series" ? "series" : "movie";
     const item = { type, imdb_id: req.query.imdb_id, tmdb_id: req.query.tmdb_id };
     const url = catalogService.playerUrl(item, req.query.season, req.query.episode);

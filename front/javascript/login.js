@@ -56,9 +56,7 @@ loginForm.addEventListener("submit", async (event) => {
             throw new Error(data.error || "E-mail ou senha inválidos.");
         }
 
-        if (document.getElementById("remember").checked) {
-            localStorage.setItem("luneflixUser", JSON.stringify(data.user));
-        }
+        localStorage.setItem("luneflixUser", JSON.stringify(data.user));
         window.location.href = "home.html";
     } catch (error) {
         alert(error.message);
@@ -78,9 +76,12 @@ document
 
         event.preventDefault();
 
-        alert(
-            "Sistema de recuperação de senha."
-        );
+        const email = window.prompt("Digite o e-mail da sua conta:");
+        if (!email) return;
+        fetch("/api/forgot-password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) })
+            .then(response => response.json().then(data => ({ response, data })))
+            .then(({ response, data }) => alert(response.ok ? "Se o e-mail existir, as instruções foram geradas. Em desenvolvimento, o token aparece no terminal do servidor." : (data.error || "Não foi possível solicitar a recuperação.")))
+            .catch(() => alert("Não foi possível solicitar a recuperação."));
     });
 
 

@@ -16,14 +16,16 @@
 
     <header class="navbar">
 
-        <div class="logo">
+        <button class="logo nav-action" data-view="inicio" type="button">
             LUNE<span>FLIX</span>
-        </div>
+        </button>
 
         <nav>
-            <a href="#inicio">Início</a>
-            <a href="#filmes">Filmes</a>
-            <a href="#series">Séries</a>
+            <a href="#inicio" data-view="inicio">Início</a>
+            <a href="#filmes" data-view="filmes">Filmes</a>
+            <a href="#series" data-view="series">Séries</a>
+            <a href="#pesquisa" data-view="pesquisa">Pesquisa</a>
+            <a href="#perfil" data-view="perfil">Perfil</a>
         </nav>
 
         <div class="search">
@@ -38,6 +40,41 @@
         </div>
 
     </header>
+
+    <section id="perfil" class="perfil-area" aria-labelledby="tituloPerfil">
+        <div class="perfil-header">
+            <div class="avatar" id="avatarPreview">L</div>
+            <div>
+                <p class="eyebrow">Minha conta</p>
+                <h2 id="tituloPerfil">Perfil</h2>
+                <p id="perfilEmail" class="perfil-muted"></p>
+            </div>
+        </div>
+        <div class="perfil-grid">
+            <form id="perfilForm" class="perfil-panel">
+                <h3>Dados da conta</h3>
+                <label for="perfilNome">Nome</label>
+                <input id="perfilNome" type="text" maxlength="80" required>
+                <label for="perfilFoto">Foto de perfil</label>
+                <input id="perfilFoto" type="url" placeholder="Cole a URL de uma imagem">
+                <button type="submit" class="perfil-button">Salvar alterações</button>
+            </form>
+            <div class="perfil-panel">
+                <h3>Seu plano</h3>
+                <div class="plano-destaque" id="perfilPlano">Plano gratuito</div>
+                <p id="perfilStatus" class="perfil-muted">Status: ativo</p>
+                <p id="perfilExpiracao" class="perfil-muted">Sem data de expiração cadastrada.</p>
+                <div class="perfil-actions">
+                    <button type="button" id="addAccountButton" class="perfil-button secundario">Adicionar conta</button>
+                    <button type="button" id="logoutButton" class="perfil-button sair">Sair da conta</button>
+                </div>
+            </div>
+        </div>
+        <div class="perfil-panel contas-panel">
+            <h3>Contas salvas</h3>
+            <div id="contasContainer" class="contas-list"></div>
+        </div>
+    </section>
 
 
     <!-- HERO -->
@@ -114,6 +151,14 @@
         <div id="pesquisaContainer" class="catalogo"></div>
 
     </main>
+
+    <div id="detailModal" class="detail-modal" aria-hidden="true">
+        <div class="detail-backdrop" data-close-detail></div>
+        <article class="detail-dialog" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
+            <button class="detail-close" type="button" data-close-detail aria-label="Fechar detalhes">X</button>
+            <div id="detailContent"></div>
+        </article>
+    </div>
 
 
     <!-- PLAYER -->
