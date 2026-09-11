@@ -4,10 +4,10 @@ require("dotenv").config({
 
 const express = require("express");
 const path = require("path");
-const fs = require("fs");
 const { spawn } = require("child_process");
 const crypto = require("crypto");
 const catalogService = require("./services/catalogService");
+const sessionStore = require("./services/sessionStore");
 
 const app = express();
 
@@ -19,24 +19,8 @@ const projectRoot = path.join(__dirname, "..");
 const authController = path.join(__dirname, "controllers", "authController.py");
 const adminController = path.join(__dirname, "controllers", "adminController.py");
 const adminSessions = new Map();
-const sessionFile = path.join(__dirname, "database", "sessions.json");
-const userSessions = new Map();
-const SESSION_TTL = 7 * 24 * 60 * 60 * 1000;
 const authAttempts = new Map();
 const secureCookie = process.env.NODE_ENV === "production" ? "; Secure" : "";
-
-function sessionKey(token) { return crypto.createHash("sha256").update(token).digest("hex"); }
-function loadSessions() {
-    try {
-        const sessions = JSON.parse(fs.readFileSync(sessionFile, "utf8"));
-        Object.entries(sessions).forEach(([key, session]) => { if (session.expiresAt > Date.now()) userSessions.set(key, session); });
-    } catch { /* arquivo ainda não existe */ }
-}
-function saveSessions() {
-    fs.mkdirSync(path.dirname(sessionFile), { recursive: true });
-    fs.writeFileSync(sessionFile, JSON.stringify(Object.fromEntries(userSessions)), "utf8");
-}
-loadSessions();
 
 app.use(express.json());
 
@@ -61,7 +45,7 @@ function runAuthController(payload, res) {
         console.error("Erro na autenticação:", error);
         res.status(500).json({ erro: "Python não está disponível para a autenticação." });
     });
-    controller.on("close", code => {
+    controller.on("close", async code => {
         if (code !== 0) {
             console.error("Controlador Python falhou:", stderr);
             return res.status(500).json({ erro: "Não foi possível processar a autenticação." });
@@ -110,15 +94,17 @@ function requireAdmin(request, response, next) {
     next();
 }
 
-function requireUser(request, response, next) {
+async function requireUser(request, response, next) {
     const token = readCookies(request).luneflix_session;
-    const session = token && userSessions.get(sessionKey(token));
-    if (!session || session.expiresAt < Date.now()) {
-        if (token) { userSessions.delete(sessionKey(token)); saveSessions(); }
-        return response.status(401).json({ error: "Autenticação necessária." });
+    try {
+        const session = await sessionStore.getSession(token);
+        if (!session) return response.status(401).json({ error: "Autenticação necessária." });
+        request.user = session.user;
+        return next();
+    } catch (error) {
+        console.error(error.message);
+        return response.status(503).json({ error: "Serviço de sessão temporariamente indisponível." });
     }
-    request.user = session.user;
-    next();
 }
 
 function limitAuth(request, response, next) {
@@ -237,15 +223,13 @@ app.post("/api/login", limitAuth, (req, res) => {
     let stdout = "";
     controller.stdout.on("data", chunk => { stdout += chunk; });
     controller.on("error", () => res.status(500).json({ error: "Python não está disponível." }));
-    controller.on("close", code => {
+    controller.on("close", async code => {
         if (code !== 0) return res.status(500).json({ error: "Não foi possível autenticar." });
         try {
             const result = JSON.parse(stdout);
             if (!result.ok) return res.status(401).json(result);
-            const token = crypto.randomBytes(32).toString("hex");
-            userSessions.set(sessionKey(token), { user: result.user, expiresAt: Date.now() + SESSION_TTL });
-            saveSessions();
-            res.setHeader("Set-Cookie", `luneflix_session=${token}; HttpOnly; Path=/; Max-Age=${SESSION_TTL / 1000}; SameSite=Lax${secureCookie}`);
+            const session = await sessionStore.createSession(result.user);
+            res.setHeader("Set-Cookie", `luneflix_session=${session.token}; HttpOnly; Path=/; Max-Age=${sessionStore.SESSION_TTL / 1000}; SameSite=Lax${secureCookie}`);
             return res.json(result);
         } catch { return res.status(500).json({ error: "Resposta inválida da autenticação." }); }
     });
@@ -253,11 +237,14 @@ app.post("/api/login", limitAuth, (req, res) => {
 });
 app.get("/api/me", requireUser, (req, res) => res.json({ ok: true, user: req.user }));
 app.patch("/api/profile", requireUser, (req, res) => runAuthController({ action: "update_profile", user_id: req.user.id, ...req.body }, res));
-app.post("/api/logout", requireUser, (req, res) => {
-    userSessions.delete(sessionKey(readCookies(req).luneflix_session));
-    saveSessions();
-    res.setHeader("Set-Cookie", "luneflix_session=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax");
-    res.json({ ok: true });
+app.post("/api/logout", requireUser, async (req, res) => {
+    try {
+        await sessionStore.deleteSession(readCookies(req).luneflix_session);
+        res.setHeader("Set-Cookie", `luneflix_session=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax${secureCookie}`);
+        res.json({ ok: true });
+    } catch {
+        res.status(503).json({ error: "Não foi possível encerrar a sessão." });
+    }
 });
 
 async function catalogResponse(type) {
@@ -311,4 +298,5 @@ app.get("/api/player", requireUser, (req, res) => {
 // Iniciar servidor
 app.listen(PORT, () => {
     console.log(`LUNEFLIX rodando em http://localhost:${PORT}`);
+    console.log(`Sessões: ${sessionStore.isPersistent() ? "Supabase" : "memória (configure SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY)"}`);
 });

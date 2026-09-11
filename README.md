@@ -1,33 +1,132 @@
 # LUNEFLIX
 
-Seu cinema. Sua Noite.
+Seu cinema. Sua noite.
 
-## Painel administrativo
+Aplicação web de catálogo de filmes e séries com autenticação, painel administrativo, reprodução por provedor externo e persistência local/Supabase.
 
-Com o servidor em execução, acesse `http://localhost:3000/admin`. O login usa a autenticação real do backend; somente usuários com `role = 'admin'` conseguem criar sessão administrativa. A conta existente com nome `admin` recebe esse papel automaticamente na migração do banco.
+## Requisitos
 
-O painel possui dashboard, usuários, pagamentos, filmes, cupons, módulos, configurações e logs. As operações administrativas são persistidas no SQLite e registradas em `admin_logs`. Pagamentos dependem da integração do provedor para começar a aparecer.
+- Node.js 18 ou superior
+- Python 3.10 ou superior
+- Uma conta TMDB e um token de API
+- Supabase configurado para persistir sessões em produção
 
-## Visualizar o banco SQLite
+## Instalação local
 
-O arquivo `back/database/usuarios.sqlite` e um banco SQLite binario. Nao abra esse arquivo como texto no VS Code, pois o editor exibira o schema misturado com dados internos do banco.
-
-Para visualizar as tabelas, instale uma extensao de SQLite no VS Code, como **SQLite Viewer**, e abra `back/database/usuarios.sqlite` usando a opcao **Open Database** da extensao. A tabela de usuarios se chama `users`.
-
-O banco tambem pode ser consultado pelo terminal:
+Na raiz do projeto:
 
 ```powershell
-python -c "import sqlite3; db=sqlite3.connect('back/database/usuarios.sqlite'); print(db.execute('SELECT id, name, email, created_at FROM users').fetchall()); db.close()"
+npm install
+Copy-Item back/.env.example back/.env
 ```
 
-## Catálogo e EmbedMovies
+Edite `back/.env` e informe pelo menos `TMDB_API_TOKEN`. Depois inicie o servidor:
 
-O catálogo novo fica nas tabelas SQLite `catalog_movies` e `catalog_series`, separado da tabela `users`. A busca consulta primeiro esse catálogo; somente quando não há resultado ela consulta o TMDB, salva os metadados e retorna o resultado com `player_url`.
+```powershell
+npm start
+```
 
-Copie `back/.env.example` para `back/.env` e preencha `TMDB_API_TOKEN`. Use `VIDEO_PROVIDER=embedmovies` para `https://myembed.biz`; `VIDEO_PROVIDER=legacy` mantém o comportamento legado quando houver `video_url`.
+A aplicação ficará disponível em `http://localhost:3000`.
 
-Execute `node back/migrate-catalog.js` para migrar registros legados que já tenham um IMDb ID na URL. O script pode ser executado novamente sem duplicar registros.
+## Variáveis de ambiente
 
-O painel em `/admin`, na seção **Filmes**, permite buscar um IMDb ID, revisar a prévia, confirmar o cadastro e remover itens. Os eventos administrativos e `LOGIN_DIFFERENT_IP` ficam em **Logs**; IPs não são enviados ao frontend comum.
+O arquivo `back/.env.example` contém o modelo:
 
-Antes da migração foi criado o backup local `backups/2026-09-06_193345`. Para restaurar, pare o servidor e copie os arquivos dessa pasta de volta, preservando o `.env` local conforme necessário.
+```env
+PORT=3000
+VIDEO_PROVIDER=embedmovies
+TMDB_API_URL=https://api.themoviedb.org/3
+TMDB_API_TOKEN=seu_token_tmdb
+SUPABASE_URL=https://seu-projeto.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=sua_chave_privada
+NODE_ENV=development
+```
+
+`SUPABASE_SERVICE_ROLE_KEY` é uma chave privada. Ela deve existir somente no backend, nunca no frontend ou no repositório.
+
+## Supabase e sessões
+
+Em produção, as sessões são gravadas na tabela `sessions` do Supabase. Execute o conteúdo de `supabase/migrations/001_sessions.sql` no SQL Editor do projeto.
+
+Depois configure `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` no ambiente onde o backend Node será executado. O servidor salva somente o hash do token e a data de expiração; o token original fica no cookie `HttpOnly` do navegador.
+
+Sem essas variáveis, o sistema usa memória apenas para desenvolvimento. Nesse modo, as sessões são perdidas quando o servidor reinicia.
+
+## Funcionalidades
+
+- Cadastro e login com senha protegida por PBKDF2.
+- Sessão HTTP com cookie `HttpOnly`, logout e proteção do player.
+- Recuperação de senha com token de uso único e expiração de 30 minutos.
+- Perfil com nome e avatar persistidos no backend.
+- Catálogo de filmes e séries usando SQLite local e fallback para TMDB.
+- Busca de títulos com cache local e controle de requisições externas.
+- Modal responsivo com poster, sinopse, categorias, nota, classificação e ano.
+- Temporadas e episódios de séries carregados sob demanda.
+- Painel administrativo com usuários, catálogo, cupons, configurações e logs.
+- Testes automatizados das rotas de sessão, player e recuperação.
+
+## Rotas principais
+
+| Método | Rota | Finalidade |
+| --- | --- | --- |
+| `POST` | `/api/register` | Criar conta |
+| `POST` | `/api/login` | Entrar e criar sessão |
+| `GET` | `/api/me` | Consultar sessão atual |
+| `POST` | `/api/logout` | Encerrar sessão |
+| `POST` | `/api/forgot-password` | Solicitar recuperação |
+| `POST` | `/api/reset-password` | Definir nova senha |
+| `GET` | `/api/filmes` | Listar filmes |
+| `GET` | `/api/series` | Listar séries |
+| `GET` | `/api/search?q=...` | Pesquisar catálogo |
+| `GET` | `/api/player` | Gerar URL protegida de reprodução |
+| `GET` | `/admin` | Abrir painel administrativo |
+
+## Banco local e catálogo
+
+O banco SQLite fica em `back/database/usuarios.sqlite` e é criado automaticamente. Ele contém usuários, catálogo local e dados administrativos. Arquivos SQLite não devem ser versionados.
+
+Para migrar filmes legados que possuem IMDb ID na URL:
+
+```powershell
+node back/migrate-catalog.js
+```
+
+Para visualizar o banco, use uma extensão SQLite no VS Code. Não abra o arquivo como texto.
+
+## Recuperação de senha em desenvolvimento
+
+O endpoint não revela se o e-mail existe. Em desenvolvimento, o link de recuperação é exibido no terminal do backend por 30 minutos. Em produção, substitua esse log por um serviço de e-mail transacional antes de disponibilizar a funcionalidade.
+
+## Testes
+
+Execute:
+
+```powershell
+npm test
+```
+
+Os testes iniciam um servidor temporário e verificam que sessões ausentes e reprodução sem autenticação são recusadas, além do comportamento da recuperação de senha.
+
+## Deploy
+
+1. Hospede o backend Node em um serviço com variáveis de ambiente e HTTPS.
+2. Configure `PORT`, `TMDB_API_TOKEN`, `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY`.
+3. Execute `npm install` durante o build e `npm start` no comando de inicialização.
+4. Execute a migração SQL do Supabase antes de testar login.
+5. Use `NODE_ENV=production` para ativar cookies `Secure`.
+6. Não publique `.env`, bancos SQLite, backups, logs ou chaves privadas.
+
+O checkout e os webhooks da Infinity Pay ainda precisam ser integrados. Até essa etapa, pagamentos aprovados não são criados automaticamente e o acesso pago deve ser tratado como funcionalidade em desenvolvimento.
+
+## Estrutura resumida
+
+```text
+back/                       Backend Express e controladores Python
+back/models/                Modelo SQLite de usuários
+back/services/              Catálogo e sessões Supabase
+front/pages/                Páginas HTML
+front/javascript/           Comportamento das telas
+front/css/                  Estilos
+supabase/migrations/        SQL de infraestrutura do Supabase
+tests/                      Testes automatizados
+```

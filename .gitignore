@@ -1,3 +1,48 @@
+# Dependências
+node_modules/
+
+# Variáveis de ambiente e segredos
 .env
+.env.*
+!.env.example
+!.env*.example
+
+# Bancos e arquivos locais gerados pelo desenvolvimento
 *.sqlite
+*.sqlite3
+*.sqlite-journal
+*.sqlite-shm
+*.sqlite-wal
+back/database/sessions.json
 backups/
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.venv/
+venv/
+env/
+
+# Sistema operacional e editores
+.DS_Store
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# Cobertura e arquivos temporários
+coverage/
+.nyc_output/
+tmp/
+temp/
