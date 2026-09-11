@@ -316,13 +316,19 @@ app.get("/api/movies", (req, res) => catalogResponse("movie").then(data => res.j
 app.get("/api/search", async (req, res) => {
     const query = String(req.query.q || req.query.query || "").trim();
     if (!query) return res.status(400).json({ error: "Informe uma pesquisa." });
-    try { res.json({ page: 1, results: await catalogService.search(query, req.ip), total_results: 1 }); }
+    try {
+        const results = await catalogService.search(query, req.ip);
+        res.json({ page: 1, results, total_results: results.length, total_pages: 1 });
+    }
     catch (error) { await catalogService.runCatalog({ action: "log", type: "API_ERROR", details: error.message, ip: req.ip }); res.status(503).json({ error: "A pesquisa externa está temporariamente indisponível." }); }
 });
 app.get("/api/pesquisa", async (req, res) => {
     const query = String(req.query.query || req.query.q || "").trim();
     if (!query) return res.status(400).json({ error: "Informe uma pesquisa." });
-    try { res.json({ page: 1, results: await catalogService.search(query, req.ip), total_results: 1 }); }
+    try {
+        const results = await catalogService.search(query, req.ip);
+        res.json({ page: 1, results, total_results: results.length, total_pages: 1 });
+    }
     catch (error) { res.status(503).json({ error: "A pesquisa externa está temporariamente indisponível." }); }
 });
 app.get("/api/series/:tmdbId/seasons/:season", requireUser, async (req, res) => {

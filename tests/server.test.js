@@ -50,3 +50,50 @@ test("recuperação não revela se o e-mail existe", async () => {
         assert.equal(response.status, 503);
     }
 });
+
+test("a busca prioriza o título mais relevante para a query", async () => {
+    const catalogService = require("../back/services/catalogService");
+    const originalRunCatalog = catalogService.runCatalog;
+    const originalExternalFetch = catalogService.externalFetch;
+
+    catalogService.runCatalog = async payload => {
+        if (payload.action === "search") {
+            return { ok: true, data: [] };
+        }
+        if (payload.action === "upsert") {
+            return { ok: true, data: { ...payload.item, title: payload.item.title || "Sem título", id: String(payload.item.tmdb_id || payload.item.imdb_id || "local") } };
+        }
+        throw new Error(`Ação inesperada: ${payload.action}`);
+    };
+
+    catalogService.externalFetch = async endpoint => {
+        if (endpoint.includes("/search/multi")) {
+            return {
+                results: [
+                    { id: 11, media_type: "movie", title: "Titans: O Ataque", original_title: "Titans: The Attack", vote_average: 6.2, overview: "" },
+                    { id: 22, media_type: "movie", title: "Clash of the Titans", original_title: "Clash of the Titans", vote_average: 7.8, overview: "" },
+                    { id: 33, media_type: "movie", title: "Titanes da Guerra", original_title: "Titanes da Guerra", vote_average: 5.9, overview: "" }
+                ]
+            };
+        }
+        if (endpoint.includes("/movie/11")) {
+            return { id: 11, title: "Titans: O Ataque", original_title: "Titans: The Attack", imdb_id: "tt11", vote_average: 6.2, overview: "", poster_path: null, backdrop_path: null, release_date: "2008-01-01", genres: [{ name: "Ação" }] };
+        }
+        if (endpoint.includes("/movie/22")) {
+            return { id: 22, title: "Clash of the Titans", original_title: "Clash of the Titans", imdb_id: "tt22", vote_average: 7.8, overview: "", poster_path: null, backdrop_path: null, release_date: "2010-03-26", genres: [{ name: "Fantasia" }] };
+        }
+        if (endpoint.includes("/movie/33")) {
+            return { id: 33, title: "Titanes da Guerra", original_title: "Titanes da Guerra", imdb_id: "tt33", vote_average: 5.9, overview: "", poster_path: null, backdrop_path: null, release_date: "2014-01-01", genres: [{ name: "Ação" }] };
+        }
+        return {};
+    };
+
+    try {
+        const results = await catalogService.search("clash of the titans");
+        assert.equal(results[0].title, "Clash of the Titans");
+        assert.ok(results[0].rating >= 7);
+    } finally {
+        catalogService.runCatalog = originalRunCatalog;
+        catalogService.externalFetch = originalExternalFetch;
+    }
+});

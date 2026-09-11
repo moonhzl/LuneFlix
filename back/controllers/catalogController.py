@@ -29,16 +29,37 @@ def normalize_search_text(value):
 	return "".join(c for c in text if not unicodedata.combining(c)).lower().strip()
 
 def list_items(content_type=None):
-	if content_type: return [decode(row, content_type) for row in select(table_for(content_type), order="updated_at.desc")]
+	if content_type:
+		try:
+			return [decode(row, content_type) for row in select(table_for(content_type), order="updated_at.desc")]
+		except Exception:
+			return []
 	return list_items("movie") + list_items("series")
+
+def search_score(query, item):
+	query = normalize_search_text(query)
+	title = normalize_search_text(item.get("title") or "")
+	original = normalize_search_text(item.get("original_title") or "")
+	base = max(SequenceMatcher(None, query, title).ratio(), SequenceMatcher(None, query, original).ratio())
+	if not query:
+		return 0.0
+	if title == query or original == query:
+		return 1.0 + base
+	if title.startswith(query) or original.startswith(query):
+		return 0.85 + base
+	if query in title or query in original:
+		return 0.7 + base
+	query_tokens = [token for token in query.split() if token]
+	if query_tokens:
+		matches = sum(1 for token in query_tokens if token in title or token in original)
+		return (matches / max(len(query_tokens), 1)) * 0.5 + base
+	return base
 
 def local_search(query):
 	query = normalize_search_text(query)
 	if not query: return []
 	items = list_items()
-	def score(item):
-		return max(SequenceMatcher(None, query, normalize_search_text(item.get("title"))).ratio(), SequenceMatcher(None, query, normalize_search_text(item.get("original_title"))).ratio())
-	return [item for item in sorted(items, key=score, reverse=True) if score(item) >= .35][:20]
+	return [item for item in sorted(items, key=lambda item: search_score(query, item), reverse=True) if search_score(query, item) >= .18][:20]
 
 def upsert_item(item):
 	content_type = "movie" if item.get("type") == "movie" else "series"
@@ -51,7 +72,10 @@ def upsert_item(item):
 	return decode(upsert(table_for(content_type), payload), content_type)
 
 def log_event(event_type, details, user_id=None, ip=None):
-	insert("system_logs", {"id": f"log_{int(datetime.now().timestamp() * 1000000)}", "type": event_type, "user_id": user_id, "timestamp": now(), "ip": ip, "details": details})
+	try:
+		insert("system_logs", {"id": f"log_{int(datetime.now().timestamp() * 1000000)}", "type": event_type, "user_id": user_id, "timestamp": now(), "ip": ip, "details": details})
+	except Exception:
+		pass
 
 def dispatch(request):
 	action = request.get("action")
