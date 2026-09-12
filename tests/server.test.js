@@ -67,7 +67,7 @@ test("a busca prioriza o título mais relevante para a query", async () => {
     };
 
     catalogService.externalFetch = async endpoint => {
-        if (endpoint.includes("/search/multi")) {
+        if (endpoint.includes("/search/") && endpoint.includes("query=clash%20of%20the%20titans")) {
             return {
                 results: [
                     { id: 11, media_type: "movie", title: "Titans: O Ataque", original_title: "Titans: The Attack", vote_average: 6.2, overview: "" },
@@ -109,24 +109,34 @@ test("a busca encontra títulos sem acento, com pontuação diferente e com pequ
         throw new Error(`Ação inesperada: ${payload.action}`);
     };
     catalogService.externalFetch = async endpoint => {
-        if (endpoint.includes("query=homem%20aranha")) return { results: [
+        if (endpoint.includes("/search/") && endpoint.includes("query=homem%20aranha")) return { results: [
             { id: 1, media_type: "movie", title: "Homem-Aranha: Sem Volta para Casa", vote_average: 8.2 },
             { id: 2, media_type: "movie", title: "O Homem de Ferro", vote_average: 9.5 }
         ] };
-        if (endpoint.includes("query=interstelar")) return { results: [] };
-        if (endpoint.includes("query=inter")) return { results: [
+        if (endpoint.includes("/search/movie") && endpoint.includes("query=harry%20potter")) return { results: [
+            { id: 5, title: "Harry Potter e a Pedra Filosofal", vote_average: 7.9 }
+        ] };
+        if (endpoint.includes("/search/tv") && endpoint.includes("query=harry%20potter")) return { results: [
+            { id: 4, name: "Harry O", vote_average: 5.2 }
+        ] };
+        if (endpoint.includes("/search/") && endpoint.includes("query=interstelar")) return { results: [] };
+        if (endpoint.includes("/search/") && endpoint.includes("query=inter")) return { results: [
             { id: 3, media_type: "movie", title: "Interestelar", original_title: "Interstellar", vote_average: 8.7 }
         ] };
         if (endpoint.includes("/movie/1")) return { id: 1, title: "Homem-Aranha: Sem Volta para Casa", imdb_id: "tt1", vote_average: 8.2, genres: [] };
         if (endpoint.includes("/movie/2")) return { id: 2, title: "O Homem de Ferro", imdb_id: "tt2", vote_average: 9.5, genres: [] };
         if (endpoint.includes("/movie/3")) return { id: 3, title: "Interestelar", original_title: "Interstellar", imdb_id: "tt3", vote_average: 8.7, genres: [] };
+        if (endpoint.includes("/tv/4")) return { id: 4, name: "Harry O", vote_average: 5.2, genres: [] };
+        if (endpoint.includes("/movie/5")) return { id: 5, title: "Harry Potter e a Pedra Filosofal", imdb_id: "tt5", vote_average: 7.9, genres: [] };
         return { results: [] };
     };
 
     try {
         const spider = await catalogService.search("homem aranha");
+        const harry = await catalogService.search("harry potter");
         const typo = await catalogService.search("interstelar");
         assert.equal(spider[0].title, "Homem-Aranha: Sem Volta para Casa");
+        assert.deepEqual(harry.map(item => item.title), ["Harry Potter e a Pedra Filosofal"]);
         assert.equal(typo[0].title, "Interestelar");
     } finally {
         catalogService.runCatalog = originalRunCatalog;

@@ -136,6 +136,18 @@ function scoreSearchRelevance(query, item) {
     return score + Math.min(Number(item.rating || item.vote_average || 0), 10) * 0.1;
 }
 
+function hasStrongTokenCoverage(query, item) {
+    const tokens = queryTokens(query);
+    if (tokens.length < 2) return scoreSearchRelevance(query, item) >= 18;
+    const fields = [item.title || item.name, item.original_title || item.original_name, ...(item.search_keywords || item.keywords || [])]
+        .map(normalizeSearchText)
+        .filter(Boolean);
+    return fields.some(field => {
+        const fieldTokens = field.split(" ");
+        return tokens.every(token => fieldTokens.some(candidate => tokenSimilarity(token, candidate) >= (token.length <= 4 ? 0.8 : 0.72)));
+    });
+}
+
 function levenshteinDistance(a, b) {
     const matrix = Array.from({ length: b.length + 1 }, (_, i) => [i]);
     for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
@@ -203,6 +215,14 @@ function externalKeywordNames(details) {
     return values.map(keyword => keyword.name).filter(Boolean);
 }
 
+function searchEndpoint(type, query, page) {
+    return `/search/${type}?query=${encodeURIComponent(query)}&language=pt-BR&page=${page}&include_adult=false`;
+}
+
+function typedResults(response, mediaType) {
+    return (response.results || []).map(item => ({ ...item, media_type: mediaType }));
+}
+
 async function search(query, clientKey = "anonymous") {
     const local = await module.exports.runCatalog({ action: "search", query });
     const { normalized, fallback } = searchVariants(query);
@@ -213,16 +233,26 @@ async function search(query, clientKey = "anonymous") {
             const found = await module.exports.externalFetch(`/find/${encodeURIComponent(query.trim())}?external_source=imdb_id&language=pt-BR`);
             searchResponses = [{ results: [...(found.movie_results || []).map(item => ({ ...item, media_type: "movie" })), ...(found.tv_results || []).map(item => ({ ...item, media_type: "tv" }))] }];
         } else {
-            const firstPage = await module.exports.externalFetch(`/search/multi?query=${encodeURIComponent(query)}&language=pt-BR&page=1&include_adult=false`);
-            const firstCandidates = (firstPage.results || []).filter(item => item.media_type === "movie" || item.media_type === "tv");
-            const shouldFetchMore = firstCandidates.length < 12 || !firstCandidates.some(item => scoreSearchRelevance(query, item) >= 45);
-            const extraPages = shouldFetchMore
-                ? await Promise.all([
-                    module.exports.externalFetch(`/search/multi?query=${encodeURIComponent(query)}&language=pt-BR&page=2&include_adult=false`),
-                    fallback ? module.exports.externalFetch(`/search/multi?query=${encodeURIComponent(fallback)}&language=pt-BR&page=1&include_adult=false`) : Promise.resolve({ results: [] })
-                ])
-                : [];
-            searchResponses = [firstPage, ...extraPages];
+            // As rotas específicas impedem que resultados de pessoas/coleções do
+            // multi-search ocupem a página antes de filmes e séries relevantes.
+            const [moviePage, tvPage] = await Promise.all([
+                module.exports.externalFetch(searchEndpoint("movie", query, 1)),
+                module.exports.externalFetch(searchEndpoint("tv", query, 1))
+            ]);
+            const firstCandidates = [...typedResults(moviePage, "movie"), ...typedResults(tvPage, "tv")];
+            const hasRelevantCandidate = firstCandidates.some(item => hasStrongTokenCoverage(query, item));
+            const extraResponses = [];
+            if (firstCandidates.length < 8) {
+                const [movieNextPage, tvNextPage] = await Promise.all([
+                    module.exports.externalFetch(searchEndpoint("movie", query, 2)),
+                    module.exports.externalFetch(searchEndpoint("tv", query, 2))
+                ]);
+                extraResponses.push({ results: typedResults(movieNextPage, "movie") }, { results: typedResults(tvNextPage, "tv") });
+            }
+            if (!hasRelevantCandidate && fallback) {
+                extraResponses.push(await module.exports.externalFetch(`/search/multi?query=${encodeURIComponent(fallback)}&language=pt-BR&page=1&include_adult=false`));
+            }
+            searchResponses = [{ results: firstCandidates }, ...extraResponses];
         }
         const candidates = searchResponses.flatMap(result => result.results || [])
             .filter(item => item.media_type === "movie" || item.media_type === "tv")
@@ -249,7 +279,7 @@ async function search(query, clientKey = "anonymous") {
         const isImdbSearch = /^tt\d+$/i.test(query.trim());
         return [...unique.values()]
             .map(item => ({ item, score: scoreSearchRelevance(query, item) }))
-            .filter(({ score }) => isImdbSearch || score >= 18)
+            .filter(({ item, score }) => isImdbSearch || (score >= 18 && hasStrongTokenCoverage(query, item)))
             .sort((a, b) => b.score - a.score)
             .slice(0, 20)
             .map(({ item }) => { delete item.search_keywords; return item; });
