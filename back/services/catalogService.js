@@ -166,8 +166,15 @@ function levenshteinDistance(a, b) {
 
 async function externalFetch(endpoint) {
     if (!API_TOKEN) throw new Error("TMDB_API_TOKEN não configurado.");
-    const response = await fetch(`${API_URL}${endpoint}`, {
-        headers: { Authorization: `Bearer ${API_TOKEN}`, "Content-Type": "application/json" },
+    // O TMDB fornece dois formatos válidos: Read Access Token (JWT, enviado
+    // como Bearer) e API Key v3. Aceitar ambos evita que uma configuração v3
+    // existente faça toda a busca cair silenciosamente no cache local.
+    const isReadAccessToken = API_TOKEN.startsWith("eyJ");
+    const url = isReadAccessToken
+        ? `${API_URL}${endpoint}`
+        : `${API_URL}${endpoint}${endpoint.includes("?") ? "&" : "?"}api_key=${encodeURIComponent(API_TOKEN)}`;
+    const response = await fetch(url, {
+        headers: { ...(isReadAccessToken ? { Authorization: `Bearer ${API_TOKEN}` } : {}), "Content-Type": "application/json" },
         signal: AbortSignal.timeout(8000)
     });
     if (!response.ok) throw new Error(`TMDB retornou HTTP ${response.status}`);
@@ -284,7 +291,10 @@ async function search(query, clientKey = "anonymous") {
             .slice(0, 20)
             .map(({ item }) => { delete item.search_keywords; return item; });
     } catch (error) {
-        if (local.data.length) return local.data.map(publicItem);
+        const localResults = local.data
+            .map(publicItem)
+            .filter(item => hasStrongTokenCoverage(query, item));
+        if (localResults.length) return localResults;
         throw error;
     } finally {
         if (externalRequests.get(cacheKey) === request) externalRequests.delete(cacheKey);

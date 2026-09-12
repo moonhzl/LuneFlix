@@ -143,3 +143,20 @@ test("a busca encontra títulos sem acento, com pontuação diferente e com pequ
         catalogService.externalFetch = originalExternalFetch;
     }
 });
+
+test("o fallback local não devolve títulos que cobrem apenas parte da pesquisa", async () => {
+    const catalogService = require("../back/services/catalogService");
+    const originalRunCatalog = catalogService.runCatalog;
+    const originalExternalFetch = catalogService.externalFetch;
+    catalogService.runCatalog = async payload => payload.action === "search"
+        ? { ok: true, data: [{ type: "series", title: "Harry O", original_title: "Harry O", tmdb_id: 10944, rating: 5.2 }] }
+        : { ok: true, data: payload.item };
+    catalogService.externalFetch = async () => { throw new Error("TMDB indisponível"); };
+
+    try {
+        await assert.rejects(() => catalogService.search("harry potter"), /TMDB indisponível/);
+    } finally {
+        catalogService.runCatalog = originalRunCatalog;
+        catalogService.externalFetch = originalExternalFetch;
+    }
+});
