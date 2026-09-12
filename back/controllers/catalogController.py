@@ -80,7 +80,14 @@ def upsert_item(item):
 	content_type = "movie" if item.get("type") == "movie" else "series"
 	key = "imdb_id" if content_type == "movie" else "tmdb_id"
 	if not item.get(key): raise ValueError("O conteúdo não possui o ID obrigatório.")
-	payload = dict(item); payload.pop("type", None); payload["updated_at"] = now(); payload.setdefault("created_at", now())
+	# Filmes e séries têm colunas próprias. Não envie campos nulos do outro
+	# tipo ao PostgREST: ele rejeita inclusive uma coluna desconhecida nula.
+	allowed = {
+		"movie": {"id", "title", "original_title", "imdb_id", "tmdb_id", "rating", "overview", "poster", "backdrop", "release_date", "genres", "runtime", "created_at", "updated_at"},
+		"series": {"id", "title", "original_title", "imdb_id", "tmdb_id", "rating", "overview", "poster", "backdrop", "first_air_date", "genres", "seasons", "created_at", "updated_at"}
+	}[content_type]
+	payload = {field: value for field, value in item.items() if field in allowed}
+	payload["updated_at"] = now(); payload.setdefault("created_at", now())
 	payload["id"] = str(payload.get("id") or f"{key}_{payload[key]}")
 	payload["genres"] = payload.get("genres", [])
 	if content_type == "series": payload["seasons"] = payload.get("seasons", [])
