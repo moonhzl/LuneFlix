@@ -2,8 +2,8 @@ const path = require("path");
 const { spawn } = require("child_process");
 
 const controller = path.join(__dirname, "..", "controllers", "catalogController.py");
-const API_URL = process.env.TMDB_API_URL || "https://api.themoviedb.org/3";
-const API_TOKEN = process.env.TMDB_API_TOKEN;
+const API_URL = (process.env.TMDB_API_URL || "https://api.themoviedb.org/3").replace(/\/+$/, "");
+const API_TOKEN = (process.env.TMDB_API_TOKEN || "").trim();
 const VIDEO_PROVIDER = process.env.VIDEO_PROVIDER || "embedmovies";
 const pythonCommand = process.env.PYTHON_BIN || (process.platform === "win32" ? "python" : "python3");
 const externalRequests = new Map();
